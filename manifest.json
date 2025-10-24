@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "Dude - AI Browser Assistant",
+  "version": "1.0.0",
+  "description": "AI-powered browser assistant for summarizing, translating, and validating web content",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "action": {
+    "default_title": "Open Dude Assistant"
+  },
+  "commands": {
+    "open-sidepanel": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+D",
+        "mac": "Command+Shift+D"
+      },
+      "description": "Open Dude Assistant"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "icons": {
+    "16": "dude-icon.png",
+    "48": "dude-icon.png",
+    "128": "dude-icon.png"
+  },
+  "minimum_chrome_version": "127"
+}
