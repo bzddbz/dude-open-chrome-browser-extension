@@ -1,268 +1,137 @@
-# 🤖 Dude - AI Browser Assistant
+# Dude — AI-powered Chrome Extension
 
-A powerful Chrome extension that helps you manage information overload with AI-powered summarization, translation, validation, and voice capabilities.
+Dude is a Chrome sidepanel extension that uses either the browser's built-in AI
+APIs or a cloud Gemini client to summarize, translate, validate, and rewrite web
+content. It includes features like speech output, session history, export functionality,
+and API key obfuscation for enhanced security.
 
-## 🎯 What It Does
+## Features
 
-- **📄 Summarize** selected text using Chrome's built-in AI APIs
-- **🌐 Translate** content to your preferred language with auto-detection
-- **✅ Validate** information credibility with fact-checking
-- **🔊 Voice Output** - Listen to results with text-to-speech
-- **✏️ Rewrite** - Improve and rewrite content with AI
-- **💾 Save** important insights with automatic bookmarking
-- **📤 Export** your saved content as JSON or Markdown
-- **📚 History** of all your processed content
+- **🧠 AI-Powered Text Processing**: Summarize, translate, validate, and rewrite selected text
+- **🔊 Voice Output**: Listen to AI results with text-to-speech in multiple languages
+- **💾 Session History**: Save and manage your AI processing history
+- **📤 Export Functionality**: Export results in JSON or Markdown format
+- **🎨 Dual Theme Support**: Automatic dark/light mode based on system preferences
+- **🔐 Secure API Key Storage**: XOR-based obfuscation for Gemini API keys
+- **⚡ Dual AI Provider**: Seamlessly switch between Chrome Built-in AI and Gemini API
 
-## 🚀 Key Features
+## Project structure
 
-### 🧠 AI-Powered Processing
-- **Smart Summarization**: Extract key points with configurable length and format
-- **Accurate Translation**: Multi-language support with auto-detection
-- **Content Validation**: Check information credibility and bias
-- **Intelligent Rewriting**: Adjust tone, style, and complexity
+- `manifest.json` — extension manifest.
+- `src/` — TypeScript source files.
+  - `core/` — low-level adapters and clients (Chrome built-in, Gemini client).
+  - `services/` — higher-level services (AI orchestration, storage, session, UI helpers).
+  - `ui/` — sidepanel UI controllers and components (Sidebar, VoiceHandler).
+  - `utils/` — utility helpers (error handling, retry, crypto for API keys).
+  - `components/` — reusable UI components (prompt-input, result-card, loading-indicator).
 
-### 🎵 Voice Integration
-- **Text-to-Speech**: Listen to AI results with natural voices
-- **Multi-language Support**: Works with detected content languages
-- **Visual Feedback**: Animated indicators for voice operations
+## Prerequisites
 
-### 🛠 Advanced Capabilities
-- **Custom Prompts**: Ask specific questions about selected content
-- **Smart Export**: Save results in JSON or Markdown formats
-- **Local Storage**: All data stays private on your device
+- Node.js >= 18
+- npm >= 9
+- A Chromium-based browser with version >= 127 (Chrome Canary recommended for Built-in AI)
 
-## 📋 Current Status
+## Installation
 
-### ✅ Production Ready
-- Complete AI integration with Chrome's built-in APIs
-- Robust fallback system for offline/demo mode
-- Comprehensive error handling and user feedback
-- Modern, responsive UI with dark/light themes
+From the project root:
 
-### 🔄 In Development
-- Enhanced voice command system
-- Advanced search and filtering
-- Performance optimizations
-- Additional AI model support
-
-## 🛠️ Installation
-
-### Development Setup
-```bash
-# Clone the repository
-git clone <repository-url>
-cd dude-browser-extension
-
-# Install dependencies
+```powershell
 npm install
+```
 
-# Build the extension
+If you plan to use Gemini (cloud), configure your API key in the extension
+settings after loading the extension. The API key is securely obfuscated in local storage.
+
+## Development
+
+Build the extension for development or distribution:
+
+```powershell
 npm run build
-
-# Load in Chrome
-# 1. Open chrome://extensions/
-# 2. Enable "Developer mode"
-# 3. Click "Load unpacked"
-# 4. Select the dist folder
 ```
 
-### Chrome AI Requirements
-For full AI functionality, you need:
-- **Google Chrome Canary** (recommended) or Dev channel
-- Enable these flags in `chrome://flags/`:
-  - `#prompt-api-for-gemini-nano`
-  - `#summarization-api-for-gemini-nano`
-  - `#translation-api`
-  - `#ai-features`
+To load the extension in Chrome during development:
 
-### Alternative: Cloud AI Mode
-Provide your **Google Gemini API key** in Settings to use cloud-based AI without Chrome flags.
+1. Build (`npm run build`) to produce a `dist/` folder.
+2. Open `chrome://extensions/` in Chrome.
+3. Enable "Developer mode".
+4. Click "Load unpacked" and select the `dist/` folder produced by the build.
 
-## ⚡ Quick Start
+## Chrome Built-in AI Setup
 
-1. **Install** the extension in Chrome
-2. **Navigate** to any webpage
-3. **Select** text you want to process
-4. **Press** `Alt + B` (or `Cmd+Alt+B` on Mac)
-5. **Choose** an AI operation:
-   - 📄 **Summarize** - Extract key points
-   - 🌐 **Translate** - Convert to preferred language
-   - ✅ **Validate** - Check credibility and bias
-   - ✏️ **Rewrite** - Adjust tone and style
-6. **Listen** to results with text-to-speech
-7. **Save** important insights for later
+For full AI functionality with Chrome's built-in APIs, enable these flags in `chrome://flags/`:
 
-## 🎨 User Interface
+1. `#prompt-api-for-gemini-nano` - Enable Gemini Nano for prompts
+2. `#summarization-api-for-gemini-nano` - Enable summarization
+3. `#translation-api` - Enable translation
+4. `#ai-features` - Enable general AI features
 
-### Main Sidebar
-```
-┌─────────────────────────────────┐
-│ 🤖 Dude!          ⚙️ Settings │
-├─────────────────────────────────┤
-│ Hey Dude!                       │
-│ Select text to get started...   │
-│                                 │
-│     [📄 Sum] [🌐 Trans] │
-│    [✅ Valid] [✏️ Rewrite]       │
-└─────────────────────────────────┘
-```
+**Note**: Chrome Built-in AI requires Chrome Canary or Dev channel.
 
-### Processing View
-```
-┌─────────────────────────────────┐
-│ Selected Text (150 chars)       │
-│ ┌─────────────────────────────┐ │
-│ │ Your selected content here  │ │
-│ └─────────────────────────────┘ │
-│                                 │
-│ 📄 Summary                      │
-│ Clean, concise summary output   │
-│ 🔊                              │
-│                                 │
-│ 🌐 Translation                  │
-│ Translated content with voice   │
-│ 🔊                              │
-│                                 │
-│ [💾 Save] [📤 Export] [🧹 Clear]│
-└─────────────────────────────────┘
-```
+## Configuration
 
-## 🔧 Configuration
+### Settings Panel
 
-### Keyboard Shortcuts
-- **Alt + B** (Windows/Linux) or **Cmd+Alt+B** (Mac): Open Dude Assistant
+Access settings via the ⚙️ icon in the extension:
 
-### Default Settings
-- **Target Language**: Auto-detect from browser
-- **History Limit**: 50 entries
-- **Auto-save**: Enabled by default
-- **Theme**: Auto (follows system preference)
-- **AI Mode**: Auto-switch or manual selection between built-in and cloud
+- **Target Language**: Select translation target language (15+ languages supported)
+- **Auto-translate Results**: Automatically translate all AI results to target language
+- **Summary Length**: Choose short, medium, or long summaries
+- **Rewrite Style**: Select formal or informal tone
+- **Gemini API Key**: Optional cloud AI fallback (securely stored)
 
-### Customization Options
-- **Translation**: 15+ supported languages
-- **Summarization**: Short/Medium/Long lengths
-- **Validation**: Lenient/Medium/Strict levels
-- **Rewrite**: Formal/Informal styles
-- **Export**: JSON or Markdown formats
+## Type checking & linting
 
-## 🔒 Privacy & Security
+Run TypeScript check:
 
-### Data Protection
-- **Local Storage Only**: No external servers
-- **Encrypted Keys**: API keys securely stored
-- **User Control**: Manual delete/export options
-- **Minimal Collection**: Only essential data stored
-- **CSP Compliant**: Secure content policies
-
-### Permissions Explained
-- `activeTab`: Access current page info for processing
-- `storage`: Save your preferences and history locally
-- `scripting`: Inject content scripts for text selection
-- `sidePanel`: Display the main user interface
-- `<all_urls>`: Detect text selections on all websites
-
-## 🚀 Advanced Usage
-
-### Custom Prompts
-Ask specific questions about selected text:
-1. Type your question in the prompt input
-2. Press Enter or click Send
-3. Get AI-powered answers
-
-## 🐛 Troubleshooting
-
-### Common Solutions
-1. **AI Not Working**: Enable Chrome AI flags or add Gemini API key
-3. **No Text Selection**: Select at least 10 characters
-4. **Loading Problems**: Refresh the extension or browser
-5. **Build Errors**: Run `npm install` and `npm run build`
-
-### Debug Information
-- Open Chrome DevTools in the sidebar (F12)
-- Check console for detailed error messages
-- Verify AI API availability status
-- Monitor local storage usage
-
-## 📁 Project Structure
-
-```
-dude-browser-extension/
-├── src/
-│   ├── config/
-│   │   └── constants.ts         # Configuration constants and settings
-│   ├── core/
-│   │   ├── ai-optimizer.ts      # AI orchestration and fallback management
-│   │   ├── ai-gemini-client.ts  # Gemini API integration
-│   │   ├── extension.ts         # Main extension entry point
-│   │   └── storage.ts           # Data persistence and management
-│   ├── services/
-│   │   ├── ai-service.ts        # AI service layer abstraction
-│   │   └── storage-service.ts   # Storage service layer abstraction
-│   ├── types/
-│   │   └── core.ts              # TypeScript interfaces and types
-│   ├── ui/
-│   │   ├── components/          # Modular UI components
-│   │   │   └──VoiceHandler.ts  # Voice input/output management
-│   │   ├── sidebar.ts           # Main user interface component
-│   │   └── style.css            # Themed styling system
-│   └── utils/
-│       ├── error-handler.ts     # Comprehensive error handling
-│       └── retry-helper.ts      # Retry logic utilities
-├── tests/
-│   └── unit/                    # Unit test files
-│       ├── ai-optimizer.test.ts # AI optimizer tests
-│       └── storage.test.ts      # Storage tests
-├── dist/                        # Built production files
-├── manifest.json                # Extension configuration
-├── background.js                # Background service worker
-├── content.js                   # Content script for text selection
-└── index.html                   # Sidebar user interface
-```
-
-## 🤝 Development
-
-### Contributing Guidelines
-1. Fork the repository
-2. Create feature branches
-3. Follow TypeScript best practices
-4. Add comprehensive tests
-5. Submit pull requests
-
-### Code Standards
-- **TypeScript**: Strict mode with comprehensive typing
-- **Modular Design**: Clean separation of concerns
-- **Functional Patterns**: Avoid complex class hierarchies
-- **Error Handling**: Graceful degradation and user feedback
-- **Performance**: Efficient DOM operations and caching
-
-### Build Process
-```bash
-# Development build (watch mode)
-npm run dev
-
-# Production build
-npm run build
-
-# Lint code
-npm run lint
-
-# Type check
+```powershell
 npm run type-check
 ```
 
-## 📄 License
+Run ESLint:
 
-**MIT License** - Feel free to use, modify, and distribute.
+```powershell
+npm run lint
+```
 
-## 🎉 Acknowledgments
+## Usage
 
-Built with ❤️ for the **Chrome Built-in AI Challenge 2025**
+1. **Select text** on any webpage
+2. **Open Dude** via toolbar icon or `Ctrl+Shift+D` (Mac: `Cmd+Shift+D`)
+3. **Choose operation**: Summarize, Translate, Validate, or Rewrite
+4. **View results** with option to:
+   - 🔊 Listen via text-to-speech
+   - 💾 Save to history
+   - 📤 Export as JSON/Markdown
 
-### Third-Party Libraries
-- **DOMPurify**: Secure HTML sanitization (MIT License)
-- **Chrome AI APIs**: Native browser AI capabilities
+## Security Features
 
----
+- **API Key Obfuscation**: Gemini API keys are XOR-encoded + base64 in storage
+- **No Plain Text Keys**: Keys never appear in console logs or unencrypted storage
+- **Local Processing**: Chrome Built-in AI processes data entirely on-device
+- **Minimal Permissions**: Only essential browser permissions requested
 
-*Transform how you browse the web with intelligent AI assistance that respects your privacy and works offline.*
+## Contributing
+
+- Keep code small and modular — prefer single-responsibility functions.
+- Add type annotations for all function parameters and returns.
+- Run `npm run lint` and `npm run type-check` before opening PRs.
+- Test with both Chrome Built-in AI and Gemini API modes.
+
+## Where to look in the code
+
+- `src/services/ai.service.ts` — orchestrates built-in vs Gemini clients with auto-translate logic.
+- `src/core/ai-gemini-client.ts` — Gemini HTTP wrapper (generate/write).
+- `src/core/chrome-builtin.ts` — adapter for browser-provided AI APIs.
+- `src/ui/sidebar.ts` — main UI controller with voice synthesis integration.
+- `src/utils/crypto.ts` — API key obfuscation utilities.
+
+## Known Limitations
+
+- Chrome Built-in AI requires Chrome Canary/Dev with feature flags enabled
+- Voice synthesis availability depends on system TTS support
+- Large text processing (>5000 chars) may take longer
+
+## License
+
+Apache-2.0

@@ -10,7 +10,8 @@
     "sidePanel"
   ],
   "host_permissions": [
-    "<all_urls>"
+    "https://*/*",
+    "http://*/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -38,9 +39,20 @@
     }
   ],
   "icons": {
-    "16": "dude-icon.png",
-    "48": "dude-icon.png",
-    "128": "dude-icon.png"
+    "16": "icons/dude-icon-16.png",
+    "32": "icons/dude-icon-32.png",
+    "48": "icons/dude-icon-48.png",
+    "128": "icons/dude-icon-128.png"
   },
-  "minimum_chrome_version": "127"
+  "minimum_chrome_version": "127",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'",
+    "sandbox": "sandbox allow-scripts allow-forms allow-popups allow-modals; script-src 'self' 'unsafe-inline' 'unsafe-eval'; child-src 'self'"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*", "styles/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }

@@ -18,14 +18,17 @@
     "@tsconfig/node-lts": "^22.0.2",
     "@tsconfig/vite-react": "^7.0.1",
     "@types/chrome": "^0.0.268",
+    "@types/dompurify": "^3.0.5",
     "@types/node": "^20.10.0",
+    "@types/trusted-types": "^2.0.7",
     "@typescript-eslint/eslint-plugin": "^6.13.0",
     "@typescript-eslint/parser": "^6.13.0",
     "autoprefixer": "^10.4.21",
+    "chrome-types": "^0.1.384",
     "eslint": "^8.54.0",
     "postcss": "^8.5.6",
     "rimraf": "^5.0.5",
-    "typescript": "^5.2.2",
+    "typescript": "^5.4.2",
     "vite": "^7.1.9"
   },
   "keywords": [
@@ -37,21 +40,21 @@
     "gemini-nano",
     "chrome-ai-api"
   ],
-  "author": "Dude Extension Team",
-  "license": "MIT",
+  "author": "Bence Désvári",
+  "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-username/dude-browser-extension.git"
+    "url": "https://github.com/bzddbz/dude-open-chrome-browser-extension.git"
   },
   "bugs": {
-    "url": "https://github.com/your-username/dude-browser-extension/issues"
+    "url": "https://github.com/bzddbz/dude-open-chrome-browser-extension/issues"
   },
-  "homepage": "https://github.com/your-username/dude-browser-extension#readme",
+  "homepage": "https://github.com/bzddbz/dude-open-chrome-browser-extension#readme",
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
   },
   "dependencies": {
-    "isomorphic-dompurify": "^2.29.0"
+    "dompurify": "^3.3.0"
   }
 }

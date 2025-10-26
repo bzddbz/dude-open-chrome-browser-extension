@@ -1,5 +1,4 @@
-import { Storage } from './storage';
-import CONFIG from '../types/core';
+import { preferencesService } from '../services/preferences.service';
 import { ErrorHandler } from '../utils/error-handler';
 
 declare global {
@@ -56,8 +55,11 @@ export class ChromeBuiltIn {
   }
 
   async summarize(text: string): Promise<string> {
-    const prefs = await Storage.getPreferences() || CONFIG;
-    const { length, type, format } = prefs.summarization;
+    // ensure preferences are loaded (e.g., provider defaults); we don't require summarization prefs here
+    const userPreferences = await preferencesService.getPreferences();
+    const length = userPreferences.userSettings.summarization.length;
+    const type = userPreferences.userSettings.summarization.type;
+    const format = userPreferences.userSettings.summarization.format;
 
     const client = await this.getClient('summarizer');
     if (!client) {
@@ -68,7 +70,8 @@ export class ChromeBuiltIn {
       let result;
       if (typeof client.summarize === 'function') {
         result = await client.summarize(text, { type, length, format, outputLanguage: 'en' });
-      } else if (typeof client.create === 'function') {
+      }
+       else if (typeof client.create === 'function') {
         const instance = await client.create({ type, length, format, outputLanguage: 'en' });
         if (instance.ready) await instance.ready;
         result = await instance.summarize(text);
@@ -91,21 +94,30 @@ export class ChromeBuiltIn {
       // Ensure proper language codes
       console.log('Raw language codes:', { sourceLanguage, targetLanguage, sourceLanguageType: typeof sourceLanguage, targetLanguageType: typeof targetLanguage });
       
-      const sourceLang = sourceLanguage === 'auto' || sourceLanguage === 'en' ? undefined : this.normalizeLanguageCode(sourceLanguage);
-      const targetLang = this.normalizeLanguageCode(targetLanguage);
+      // Chrome Translator API expects source and target languages
+      // If sourceLanguage is 'auto', detect it first
+      let sourceLang = sourceLanguage;
+      if (sourceLang === 'auto') {
+        console.log('Auto-detecting source language...');
+        sourceLang = await this.detectLanguage(text);
+        console.log('Detected language:', sourceLang);
+      }
+      
+      const normalizedSource = this.normalizeLanguageCode(sourceLang);
+      const normalizedTarget = this.normalizeLanguageCode(targetLanguage);
 
-      console.log('Translation options:', { sourceLang, targetLang });
+      console.log('Translation options:', { sourceLang: normalizedSource, targetLang: normalizedTarget });
 
       // Determine how to instantiate the translator
       let result;
       if (typeof client.translate === 'function') {
         // Translator supports direct translate with separate language arguments
-        result = await client.translate(text, sourceLang, targetLang);
+        result = await client.translate(text, normalizedSource, normalizedTarget);
       } else if (typeof client.create === 'function') {
         // Some implementations expect language codes as separate arguments
         const instance = client.create.length >= 2
-          ? await client.create(sourceLang, targetLang)
-          : await client.create({ sourceLanguage: sourceLang, targetLanguage: targetLang });
+          ? await client.create(normalizedSource, normalizedTarget)
+          : await client.create({ sourceLanguage: normalizedSource, targetLanguage: normalizedTarget });
         if (instance.ready) await instance.ready;
         result = await instance.translate(text);
         if (instance.destroy) await instance.destroy();

@@ -38,7 +38,7 @@
 - Effective date included
 
 ## 8. Contact Us
-- Email: [dude-dev@proton.me]
+- Email: [bzd.dbz@proton.me]
 - GitHub: [[repository issues link](https://github.com/bzddbz/dude-open-chrome-browser-extension/issues)]
 
 Last Updated: [2025.10.24]

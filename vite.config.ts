@@ -14,8 +14,11 @@ export default defineConfig({
       output: {
         entryFileNames: '[name].js',
         chunkFileNames: '[name].js',
-        assetFileNames: '[name].[ext]'
-      }
+        assetFileNames: '[name].[ext]',
+        format: 'es'
+      },
+      // Prevent code splitting for background script
+      external: []
     },
     minify: false,
     sourcemap: true,

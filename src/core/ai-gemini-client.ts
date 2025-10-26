@@ -1,17 +1,21 @@
 // Lightweight Gemini API client wrapper for Dude extension
 // Exposes createClient() which returns an object with generate, stream, write and cancel methods.
-
-import { storageService } from '../services/storage-service';
+import { preferencesService } from '../services/preferences.service';
+import { deobfuscateApiKey } from '../utils/crypto';
 
 export async function createClient() {
   const controller = { ac: new AbortController() } as any;
 
 const getApiKey = async (): Promise<string> => {
   try {
-    const apiKey = await storageService.getGeminiApiKey();
-    if (!apiKey) {
-      console.warn('[GeminiClient] No API key found, will use demo mode');
+    const data = await chrome.storage.local.get('geminiApiKey');
+    const obfuscated = data?.geminiApiKey || '';
+    if (!obfuscated) {
+      console.warn('[GeminiClient] No API key found');
+      return '';
     }
+    // Deobfuscate before use
+    const apiKey = deobfuscateApiKey(obfuscated);
     return apiKey;
   } catch (e) {
     console.error('[GeminiClient] Error getting API key:', e);
@@ -21,7 +25,8 @@ const getApiKey = async (): Promise<string> => {
 
   const getModel = async (): Promise<string> => {
   try {
-    return await storageService.getGeminiModel();
+    const data = await chrome.storage.local.get('geminiModel');
+    return data?.geminiModel || 'gemini-2.0-flash-lite';
   } catch (e) {
     console.error('[GeminiClient] Error getting model:', e);
     return 'gemini-2.0-flash-lite';
@@ -32,9 +37,19 @@ const shouldUseGemini = async (): Promise<boolean> => {
   try {
     let cloudFirst = false;
     let apiKey = '';
-    
-    cloudFirst = await storageService.getGeminiCloudFirst();
-    apiKey = await storageService.getGeminiApiKey();
+    // Prefer explicit cloudFirst flag in storage but fall back to preferences default provider
+    try {
+      const cfg = await chrome.storage.local.get(['geminiCloudFirst','geminiApiKey']);
+      cloudFirst = !!cfg?.geminiCloudFirst;
+      apiKey = cfg?.geminiApiKey || '';
+    } catch (e) {
+      // ignore, will try preferences
+    }
+
+    if (!cloudFirst) {
+      const prefs = await preferencesService.getPreferences();
+      cloudFirst = prefs.defaultProviderId === 'gemini';
+    }
     
     if (cloudFirst) {
       console.log('[GeminiClient] Using Gemini due to cloudFirst setting');
@@ -45,8 +60,8 @@ const shouldUseGemini = async (): Promise<boolean> => {
     const shouldUseGemini = !hasBuiltInAI || !apiKey;
     
     console.log('[GeminiClient] Built-in AI available:', hasBuiltInAI);
-    console.log('[GeminiClient] API key available:', !!apiKey);
-    console.log('[GeminiClient] Should use Gemini:', shouldUseGemini);
+    // Do not log any API key related info
+    console.log('[GeminiClient] Route decision (Gemini?):', shouldUseGemini);
     
     return shouldUseGemini;
   } catch (error) {
@@ -65,9 +80,9 @@ const shouldUseGemini = async (): Promise<boolean> => {
     const useGemini = await shouldUseGemini();
 
     if (!useGemini || !apiKey) {
-      // Fallback to demo mode
+      // Fallback to demo mode (no provider details logged)
       const inputText = request?.input || request?.instruction || request?.text || '';
-      console.warn('[GeminiClient] Using demo mode - useGemini:', useGemini, 'hasApiKey:', !!apiKey);
+      console.warn('[GeminiClient] Using demo mode');
       return { text: `[Demo Gemini] ${String(inputText).slice(0, 300)}` };
     }
 
@@ -235,7 +250,7 @@ const shouldUseGemini = async (): Promise<boolean> => {
         throw new Error('No response body reader available');
       }
 
-      while (true) {
+      while (response) {
         if (controller.ac.signal.aborted) {
           break;
         }

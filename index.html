@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dude! - AI Browser Assistant</title>
+    <link rel="stylesheet" href="/src/style.css" />
+    <link
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+      rel="stylesheet"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&amp;display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="app">
+    <!-- Animated Particle Background -->
+    <div class="particle-container">
+      <div
+        class="particle"
+        style="width: 150px; height: 150px; top: 10%; left: 20%"
+      ></div>
+      <div
+        class="particle"
+        style="width: 100px; height: 100px; top: 70%; left: 80%"
+      ></div>
+      <div
+        class="particle"
+        style="width: 80px; height: 80px; top: 40%; left: 5%"
+      ></div>
+      <div
+        class="particle"
+        style="width: 200px; height: 200px; top: 80%; left: 10%"
+      ></div>
+      <div
+        class="particle"
+        style="width: 120px; height: 120px; top: 5%; left: 90%"
+      ></div>
+    </div>
+
+    <div class="app-container">
+      <header class="app-header">
+        <div class="logo-group">
+          <img alt="Dude! logo" class="logo" src="public/icons/dude-icon.png" />
+          <h1 class="app-title">dude</h1>
+        </div>
+        <button id="settings-btn" class="settings-btn" title="Settings">
+          <span class="material-icons">settings</span>
+        </button>
+      </header>
+
+      <main id="main-content" class="main">
+        <div class="main-content-wrapper">
+          <section id="hero-section" class="hero">
+            <div class="hero-logo-container">
+              <div class="avatar-wrapper">
+                <div class="avatar-glow outer"></div>
+                <div class="avatar-glow inner"></div>
+                <img
+                  alt="Dude AI Assistant"
+                  class="avatar"
+                  src="public/icons/dude-icon.png"
+                />
+                <!-- Welcome Progress Overlay -->
+                <div
+                  id="welcome-progress"
+                  class="welcome-progress"
+                  style="display: none"
+                >
+                  <div class="progress-spinner"></div>
+                  <span class="progress-text">Initializing AI capabilities...</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="hero-content">
+              <h1 class="hero-title">Welcome to Dude!</h1>
+              <p class="hero-tagline">Your AI-powered browser assistant for smarter web browsing</p>
+              
+              <div class="hero-features">
+                <div class="feature-card">
+                  <span class="material-icons feature-icon">auto_stories</span>
+                  <span class="feature-text">Smart Summarization</span>
+                </div>
+                <div class="feature-card">
+                  <span class="material-icons feature-icon">translate</span>
+                  <span class="feature-text">Instant Translation</span>
+                </div>
+                <div class="feature-card">
+                  <span class="material-icons feature-icon">fact_check</span>
+                  <span class="feature-text">Content Validation</span>
+                </div>
+              </div>
+
+              <div class="setup-instructions">
+                <h2 class="setup-title">Get Started with AI</h2>
+                <div class="setup-options">
+                  <div class="setup-option">
+                    <div class="option-badge">Recommended</div>
+                    <h3>Chrome Built-in AI</h3>
+                    <p>Use Chrome's native AI capabilities (Chrome Canary required)</p>
+                    <a href="https://developer.chrome.com/docs/ai/get-started#requirements" target="_blank" class="setup-link">
+                      Enable Chrome AI Features →
+                    </a>
+                  </div>
+                  <div class="setup-option">
+                    <div class="option-badge secondary">Alternative</div>
+                    <h3>Gemini API Key</h3>
+                    <p>Enter your Google API key in Settings for cloud-based AI</p>
+                    <a href="https://developers.google.com/gemini/get-started" target="_blank" class="setup-link">
+                      Get Gemini API Key →
+                    </a>
+                  </div>
+                </div>
+              </div>
+
+              <div class="hero-instructions">
+                <h3 class="instructions-title">How to Use</h3>
+                <ol class="instructions-steps">
+                  <li>Select any text on a webpage</li>
+                  <li>Click the Dude icon or press Alt + B</li>
+                  <li>Choose an AI operation: Summarize, Translate, Validate, or more</li>
+                  <li>Get instant AI-powered results!</li>
+                </ol>
+              </div>
+
+              <div class="hero-footer">
+                <p class="copyright">© 2025 - <a href="https://github.com/bzddbz" target="_blank">BZD</a></p>
+                <p class="built-with">Built with ❤️ for the Chrome Built-in AI Challenge</p>
+              </div>
+            </div>
+          </section>
+
+          <section id="action-section" class="actions hidden">
+            <div class="function-buttons-row">
+              <button id="summarize-btn" class="function-btn" title="Summarize">
+                <span class="material-icons">summarize</span>
+              </button>
+              <button id="translate-btn" class="function-btn" title="Translate">
+                <span class="material-icons">translate</span>
+              </button>
+              <button id="validate-btn" class="function-btn" title="Validate">
+                <span class="material-icons">fact_check</span>
+              </button>
+              <button id="rewrite-btn" class="function-btn" title="Rewrite">
+                <span class="material-icons">edit</span>
+              </button>
+            </div>
+            <div class="section-header">
+              <span class="material-icons section-icon">article</span>
+              <h2 class="section-title">Process Text</h2>
+            </div>
+
+            <div class="selected-text">
+              <div class="selected-text-header">
+                <button
+                  id="clear-text-btn"
+                  class="clear-text-btn"
+                  title="Clear selected text"
+                >
+                  <span class="material-icons">close</span>
+                </button>
+              </div>
+              <textarea
+                id="selected-text"
+                class="selected-textarea"
+                placeholder="Selected text will appear here..."
+                readonly
+              ></textarea>
+              <div class="char-count"><span id="char-count">0</span>/5000</div>
+            </div>
+
+            <div id="results-section" class="results hidden">
+              <div id="summary-result" class="result-card hidden">
+                <div class="result-header">
+                  <h4 class="result-title">
+                    <span class="material-icons">article</span> Summary
+                  </h4>
+                  <button class="result-voice-btn" title="Read aloud" data-result-type="summary">
+                    <span class="material-icons">volume_up</span>
+                  </button>
+                </div>
+                <div class="result-content"></div>
+              </div>
+              <div id="translation-result" class="result-card hidden">
+                <div class="result-header">
+                  <h4 class="result-title">
+                    <span class="material-icons">translate</span> Translation
+                  </h4>
+                  <button class="result-voice-btn" title="Read aloud" data-result-type="translation">
+                    <span class="material-icons">volume_up</span>
+                  </button>
+                </div>
+                <div class="result-content"></div>
+              </div>
+              <div id="validation-result" class="result-card hidden">
+                <div class="result-header">
+                  <h4 class="result-title">
+                    <span class="material-icons">fact_check</span> Validation
+                  </h4>
+                  <button class="result-voice-btn" title="Read aloud" data-result-type="validation">
+                    <span class="material-icons">volume_up</span>
+                  </button>
+                </div>
+                <div class="result-content"></div>
+              </div>
+              <div id="rewrite-result" class="result-card hidden">
+                <div class="result-header">
+                  <h4 class="result-title">
+                    <span class="material-icons">edit</span> Rewrite
+                  </h4>
+                  <button class="result-voice-btn" title="Read aloud" data-result-type="rewrite">
+                    <span class="material-icons">volume_up</span>
+                  </button>
+                </div>
+                <div class="result-content"></div>
+              </div>
+              <div id="prompt-result" class="result-card hidden">
+                <div class="result-header">
+                  <h4 class="result-title">
+                    <span class="material-icons">edit</span> Prompt
+                  </h4>
+                  <button class="result-voice-btn" title="Read aloud" data-result-type="prompt">
+                    <span class="material-icons">volume_up</span>
+                  </button>
+                </div>
+                <div class="result-content"></div>
+              </div>
+            </div>
+
+            <div id="save-section" class="save-row">
+              <button id="save-btn" class="action-btn primary">
+                <span class="material-icons">save</span> Save
+              </button>
+              <button id="export-btn" class="action-btn">
+                <span class="material-icons">download</span> Export
+              </button>
+              <button id="clear-session-btn" class="action-btn secondary">
+                <span class="material-icons">clear_all</span> Clear
+              </button>
+            </div>
+          </section>
+
+          <section id="history-section" class="history hidden">
+            <div class="section-header">
+              <span class="material-icons section-icon">history</span>
+              <h2 class="section-title">History</h2>
+              <div
+                class="history-header-actions"
+                style="display: flex; gap: 8px; margin-left: auto"
+              >
+                <button
+                  id="export-all-history-btn"
+                  class="export-all-btn"
+                  title="Export all history"
+                >
+                  <span class="material-icons">download</span>
+                </button>
+                <button
+                  id="clear-all-history-btn"
+                  class="clear-all-btn"
+                  title="Clear all history"
+                >
+                  <span class="material-icons">delete</span>
+                </button>
+              </div>
+            </div>
+            <div id="history-list" class="history-list">
+              <p class="text-subtle-dark text-sm">No history yet</p>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <footer id="app-footer" class="app-footer">
+        <div class="prompt-row">
+          <input
+            id="prompt-input"
+            class="prompt-input"
+            placeholder="Missing something, just tell me what to do..."
+            type="text"
+          />
+          <button id="send-prompt-btn" class="send-btn" title="Send">
+            <span class="material-icons">send</span>
+          </button>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="settings-modal hidden">
+      <div class="settings-content">
+        <div class="settings-header">
+          <h2 class="settings-title">⚙️ Settings</h2>
+          <button
+            id="close-settings"
+            class="close-btn"
+            aria-label="Close settings"
+          >
+            <span class="material-icons">close</span>
+          </button>
+        </div>
+        <div class="settings-body">
+          <!-- Translation Settings -->
+          <div class="settings-section">
+            <h3><span class="material-icons">translate</span> Translation</h3>
+            <div class="setting-item">
+              <label for="target-language">Target Language:</label>
+              <select id="target-language" class="custom-input"></select>
+            </div>
+            <div class="setting-item">
+              <label for="source-language">Source Language:</label>
+              <select id="source-language" class="custom-input">
+                <option value="auto">Auto-detect</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="auto-detect" />
+                Auto-detect browser language
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="auto-translate-response" />
+                Auto-translate response to target language
+              </label>
+            </div>
+          </div>
+
+          <!-- Summarization Settings -->
+          <div class="settings-section">
+            <h3><span class="material-icons">article</span> Summarization</h3>
+            <div class="setting-item">
+              <label for="summary-length">Summary Length:</label>
+              <select id="summary-length" class="custom-input">
+                <option value="short">Short</option>
+                <option value="medium">Medium</option>
+                <option value="long">Long</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label for="summary-type">Summary Type:</label>
+              <select id="summary-type" class="custom-input">
+                <option value="key-points">Key Points</option>
+                <option value="tldr">TLDR</option>
+                <option value="headline">Headline</option>
+                <option value="teaser">Teaser</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label for="summary-format">Output format:</label>
+              <select id="summary-format" class="custom-input">
+                <option value="markdown">Markdown</option>
+                <option value="plain-text">Plain text</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Validation Settings -->
+          <div class="settings-section">
+            <h3><span class="material-icons">fact_check</span> Validation</h3>
+            <div class="setting-item">
+              <label for="validation-strictness">Strictness:</label>
+              <select id="validation-strictness" class="custom-input">
+                <option value="lenient">Lenient</option>
+                <option value="medium">Medium</option>
+                <option value="strict">Strict</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label for="fact-check-level">Fact Check Level:</label>
+              <select id="fact-check-level" class="custom-input">
+                <option value="basic">Basic</option>
+                <option value="standard">Standard</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="check-sources" />
+                Check sources
+              </label>
+            </div>
+          </div>
+
+          <!-- Rewrite Settings -->
+          <div class="settings-section">
+            <h3><span class="material-icons">edit</span> Rewrite</h3>
+            <div class="setting-item">
+              <label for="rewrite-style">Style:</label>
+              <select id="rewrite-style" class="custom-input">
+                <option value="formal">Formal</option>
+                <option value="informal">Informal</option>
+                <option value="neutral">Neutral</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label for="rewrite-tone">Tone:</label>
+              <select id="rewrite-tone" class="custom-input">
+                <option value="friendly">Friendly</option>
+                <option value="professional">Professional</option>
+                <option value="casual">Casual</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label for="rewrite-complexity">Complexity:</label>
+              <select id="rewrite-complexity" class="custom-input">
+                <option value="simple">Simple</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Storage Settings -->
+          <div class="settings-section">
+            <h3><span class="material-icons">storage</span> Storage</h3>
+            <div class="setting-item">
+              <label for="history-limit">History Limit:</label>
+              <select id="history-limit" class="custom-input">
+                <option value="10">10 items</option>
+                <option value="25">25 items</option>
+                <option value="50">50 items</option>
+                <option value="100">100 items</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label for="export-format">Export Format:</label>
+              <select id="export-format" class="custom-input">
+                <option value="json">JSON</option>
+                <option value="markdown">Markdown</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="auto-save" />
+                Auto-save results
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="auto-save-on-selection-change" />
+                Auto-save on selection change
+              </label>
+            </div>
+          </div>
+
+          <!-- General Settings -->
+          <div class="settings-section">
+            <h3><span class="material-icons">settings</span> General</h3>
+            <div class="setting-item">
+              <label for="theme">Theme:</label>
+              <select id="theme" class="custom-input">
+                <option value="auto">Auto</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="animations" />
+                Enable animations
+              </label>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="notifications" />
+                Show notifications
+              </label>
+            </div>
+          </div>
+
+          <!-- Gemini AI Settings -->
+          <div class="settings-section">
+            <h3><span class="material-icons">cloud</span> Gemini AI</h3>
+            <div class="setting-item">
+              <label for="gemini-api-key">API Key:</label>
+              <input
+                type="password"
+                id="gemini-api-key"
+                class="custom-input"
+                placeholder="Enter your Gemini API key"
+              />
+              <small class="setting-hint"
+                >Your API key is stored locally and never sent to any server
+                except Google's Gemini API.</small
+              >
+            </div>
+            <div class="setting-item">
+              <label for="gemini-model">Model:</label>
+              <select id="gemini-model" class="custom-input">
+                <option value="gemini-2.0-flash-exp">
+                  Gemini 2.0 Flash (Recommended)
+                </option>
+                <option value="gemini-2.0-pro-exp">Gemini 2.0 Pro</option>
+                <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
+                <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="gemini-cloud-first" />
+                Use cloud AI first (fallback to built-in when unavailable)
+              </label>
+            </div>
+            <div class="setting-item">
+              <small class="setting-hint">
+                When "Use cloud AI first" is enabled, the extension will use
+                Gemini API by default. When disabled, it will use Chrome's
+                built-in AI APIs when available (requires Google Canary with
+                flags enabled).
+              </small>
+            </div>
+          </div>
+        </div>
+        <div class="settings-footer">
+          <button id="reset-settings" class="action-btn">
+            Reset to Defaults
+          </button>
+          <button id="save-settings" class="action-btn primary">
+            Save Settings
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Enhanced Loader with Progress Indicator -->
+    <div id="loader" class="loader" style="display: none">
+      <div class="loader-content">
+        <div class="spinner"></div>
+        <div class="loader-info">
+          <span class="loader-text">Processing...</span>
+          
+        </div>
+      </div>
+    </div>
+
+    <div id="message-container" class="message-container"></div>
+
+    <script type="module" src="/src/core/extension.ts"></script>
+  </body>
+</html>
