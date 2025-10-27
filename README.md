@@ -23,7 +23,6 @@ and API key obfuscation for enhanced security.
   - `services/` — higher-level services (AI orchestration, storage, session, UI helpers).
   - `ui/` — sidepanel UI controllers and components (Sidebar, VoiceHandler).
   - `utils/` — utility helpers (error handling, retry, crypto for API keys).
-  - `components/` — reusable UI components (prompt-input, result-card, loading-indicator).
 
 ## Prerequisites
 
