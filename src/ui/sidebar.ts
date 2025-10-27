@@ -174,6 +174,20 @@ export class Sidebar {
                     const geminiCloudFirst = document.getElementById('gemini-cloud-first') as HTMLInputElement;
                     if (geminiCloudFirst) geminiCloudFirst.checked = prefs.gemini.cloudFirst ?? false;
                 }
+                
+                // OpenAI-compatible (local AI providers)
+                if (prefs.openaiCompatible) {
+                    const openaiEnabled = document.getElementById('openai-enabled') as HTMLInputElement;
+                    if (openaiEnabled) openaiEnabled.checked = prefs.openaiCompatible.enabled ?? false;
+                    const openaiProvider = document.getElementById('openai-provider') as HTMLSelectElement;
+                    if (openaiProvider) openaiProvider.value = prefs.openaiCompatible.provider || 'ollama';
+                    const openaiBaseUrl = document.getElementById('openai-base-url') as HTMLInputElement;
+                    if (openaiBaseUrl) openaiBaseUrl.value = prefs.openaiCompatible.baseUrl || 'http://localhost:11434';
+                    const openaiModel = document.getElementById('openai-model') as HTMLInputElement;
+                    if (openaiModel) openaiModel.value = prefs.openaiCompatible.model || 'llama3:8b';
+                    const openaiApiKey = document.getElementById('openai-api-key') as HTMLInputElement;
+                    if (openaiApiKey) openaiApiKey.value = deobfuscateApiKey(prefs.openaiCompatible.apiKey || '');
+                }
             }
         } catch (error) {
             console.error('Failed to load settings:', error);
@@ -786,7 +800,9 @@ export class Sidebar {
             
             historyList.innerHTML = sortedHistory.map((item: any, index: number) => {
                 const provider = item.provider || 'unknown';
-                const providerIcon = provider === 'gemini' ? '☁️' : provider === 'built-in' ? '🖥️' : '❓';
+                const providerIcon = provider === 'openai-compatible' ? '🖥️' : 
+                                   provider === 'gemini' ? '☁️' : 
+                                   provider === 'built-in' ? '🤖' : '❓';
                 const date = new Date(item.timestamp).toLocaleString('hu-HU', {
                     month: 'short',
                     day: 'numeric',
@@ -1079,13 +1095,21 @@ export class Sidebar {
                 // Gemini
                 geminiApiKey: (document.getElementById('gemini-api-key') as HTMLInputElement)?.value,
                 geminiModel: (document.getElementById('gemini-model') as HTMLSelectElement)?.value,
-                geminiCloudFirst: (document.getElementById('gemini-cloud-first') as HTMLInputElement)?.checked
+                geminiCloudFirst: (document.getElementById('gemini-cloud-first') as HTMLInputElement)?.checked,
+                
+                // OpenAI-compatible
+                openaiEnabled: (document.getElementById('openai-enabled') as HTMLInputElement)?.checked,
+                openaiProvider: (document.getElementById('openai-provider') as HTMLSelectElement)?.value,
+                openaiBaseUrl: (document.getElementById('openai-base-url') as HTMLInputElement)?.value,
+                openaiModel: (document.getElementById('openai-model') as HTMLInputElement)?.value,
+                openaiApiKey: (document.getElementById('openai-api-key') as HTMLInputElement)?.value
             };
 
-            console.log('💾 Saving settings (API key will be obfuscated)');
+            console.log('💾 Saving settings (API keys will be obfuscated)');
             
-            // Obfuscate API key before saving
-            const obfuscatedApiKey = obfuscateApiKey(settings.geminiApiKey);
+            // Obfuscate API keys before saving
+            const obfuscatedGeminiApiKey = obfuscateApiKey(settings.geminiApiKey);
+            const obfuscatedOpenAIApiKey = obfuscateApiKey(settings.openaiApiKey);
 
             // Save to chrome.storage.local in the format that preferences service expects
             await chrome.storage.local.set({
@@ -1132,9 +1156,16 @@ export class Sidebar {
                             notifications: settings.notifications
                         },
                         gemini: {
-                            apiKey: obfuscatedApiKey,
+                            apiKey: obfuscatedGeminiApiKey,
                             selectedModel: settings.geminiModel,
                             cloudFirst: settings.geminiCloudFirst
+                        },
+                        openaiCompatible: {
+                            enabled: settings.openaiEnabled,
+                            provider: settings.openaiProvider,
+                            baseUrl: settings.openaiBaseUrl,
+                            model: settings.openaiModel,
+                            apiKey: obfuscatedOpenAIApiKey
                         }
                     }
                 },
@@ -1173,13 +1204,20 @@ export class Sidebar {
                         notifications: settings.notifications
                     },
                     gemini: {
-                        apiKey: obfuscatedApiKey,
+                        apiKey: obfuscatedGeminiApiKey,
                         model: settings.geminiModel,
                         cloudFirst: settings.geminiCloudFirst
+                    },
+                    openaiCompatible: {
+                        enabled: settings.openaiEnabled,
+                        provider: settings.openaiProvider,
+                        baseUrl: settings.openaiBaseUrl,
+                        model: settings.openaiModel,
+                        apiKey: obfuscatedOpenAIApiKey
                     }
                 },
-                // Also save these separately for easier access by ai-gemini-client (obfuscated)
-                'geminiApiKey': obfuscatedApiKey,
+                // Also save these separately for easier access by ai clients (obfuscated)
+                'geminiApiKey': obfuscatedGeminiApiKey,
                 'geminiModel': settings.geminiModel,
                 'geminiCloudFirst': settings.geminiCloudFirst
             });

@@ -70,6 +70,13 @@ const DEFAULTS: Preferences = {
       apiKey: '',
       selectedModel: CONFIG.GEMINI.DEFAULT_MODEL,
       cloudFirst: CONFIG.GEMINI.CLOUD_FIRST_DEFAULT
+    },
+    openaiCompatible: {
+      enabled: false,
+      baseUrl: 'http://localhost:11434',  // Default Ollama URL
+      model: 'llama3:8b',
+      apiKey: '',  // Optional, most local servers don't need it
+      provider: 'ollama'  // 'ollama' | 'lmstudio' | 'localai' | 'custom'
     }
   }
 };

@@ -144,6 +144,13 @@ export const createSession = (tabData: TabData): Session => ({
             apiKey: '',
             selectedModel: CONFIG.GEMINI.DEFAULT_MODEL,
             cloudFirst: CONFIG.GEMINI.CLOUD_FIRST_DEFAULT
+        },
+        openaiCompatible: {
+            enabled: false,
+            baseUrl: 'http://localhost:11434',
+            model: 'llama3:8b',
+            apiKey: '',
+            provider: 'ollama'
         }
     }
 });
@@ -265,6 +272,14 @@ export interface UserPreferences {
         apiKey: string;
         selectedModel: string;
         cloudFirst: boolean;
+    };
+
+    openaiCompatible?: {
+        enabled: boolean;
+        baseUrl: string;
+        model: string;
+        apiKey?: string;
+        provider: 'ollama' | 'lmstudio' | 'localai' | 'custom';
     };
 }
 

@@ -6,6 +6,7 @@ import { Preferences, preferencesService } from './preferences.service';
 import { Utils } from '../utils/helpers';
 import { ErrorHandler } from '../utils/error-handler';
 import { TextOperationType, TextOperationResult } from '../types/index';
+import { deobfuscateApiKey } from '../utils/crypto';
 
 export class AIService {
   private static instance: AIService;
@@ -107,8 +108,48 @@ export class AIService {
   }
 
   private async getGeminiClient() {
-    const { default: createGeminiClient } = await import('../core/ai-gemini-client.js');
+    const { default: createGeminiClient } = await import('../core/ai-gemini-client');
     return await createGeminiClient();
+  }
+
+  private async getOpenAIClient(preferences?: Preferences) {
+    const prefs = preferences || await preferencesService.getPreferences();
+    const config = prefs?.userSettings?.openaiCompatible;
+    
+    if (!config || !config.enabled) {
+      throw new Error('OpenAI-compatible provider not configured');
+    }
+
+    const { default: createOpenAIClient } = await import('../core/ai-openai-client');
+    return await createOpenAIClient({
+      baseUrl: config.baseUrl,
+      model: config.model,
+      apiKey: config.apiKey ? deobfuscateApiKey(config.apiKey) : undefined
+    });
+  }
+
+  /**
+   * Determines which AI provider to use: openai-compatible, gemini, or built-in
+   * Priority: OpenAI-compatible > Gemini > Built-in
+   */
+  private async getProviderType(operationType: string, preferences?: Preferences): Promise<'openai-compatible' | 'gemini' | 'built-in'> {
+    const prefs = preferences || await preferencesService.getPreferences();
+    
+    // Check OpenAI-compatible first
+    if (prefs?.userSettings?.openaiCompatible?.enabled) {
+      console.log('🔌 Using OpenAI-compatible provider');
+      return 'openai-compatible';
+    }
+    
+    // Then check Gemini
+    if (await this.shouldUseGemini(operationType, prefs)) {
+      console.log('☁️ Using Gemini provider');
+      return 'gemini';
+    }
+    
+    // Fallback to built-in
+    console.log('🖥️ Using Chrome Built-in AI');
+    return 'built-in';
   }
 
   private handleAIError(error: unknown, label: string, fallback = `${label} failed`): string {
@@ -133,7 +174,19 @@ export class AIService {
   async summarize(text: string, preferences?: Preferences): Promise<string> {
     try {
       const prefs = preferences || await preferencesService.getPreferences();
-      if (await this.shouldUseGemini('summarize', prefs)) {
+      const providerType = await this.getProviderType('summarize', prefs);
+      
+      if (providerType === 'openai-compatible') {
+        const openai = await this.getOpenAIClient(prefs);
+        const { length, type, format } = prefs.userSettings?.summarization || { length: 'medium', type: 'key-points', format: 'markdown' };
+        const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
+        const targetLang = prefs.userSettings?.translation?.targetLanguage || 'en';
+        const langInstruction = autoTranslate ? ` Respond in ${targetLang} language.` : '';
+        const prompt = `Please summarize the following text in ${length} length and ${type} format: ${format}.${langInstruction}\n\n${text}`;
+        return await openai.generate(prompt);
+      }
+      
+      if (providerType === 'gemini') {
         const gemini = await this.getGeminiClient();
         const { length, type, format } = prefs.userSettings?.summarization || { length: 'medium', type: 'key-points', format: 'markdown' };
         const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
@@ -143,6 +196,7 @@ export class AIService {
         const res = await gemini.generate?.({ text: prompt });
         return res?.text || this.handleAIError(new Error('Summarization failed'), 'Summarization');
       }
+      
       return await Utils.retry(() => chromeBuiltin.summarize(text), 2, 2000);
     } catch (err) {
       return this.handleAIError(err, 'Summarization');
@@ -152,18 +206,107 @@ export class AIService {
   async translate(text: string, preferences?: Preferences): Promise<string> {
     try {
       const prefs = preferences || await preferencesService.getPreferences();
-      if (await this.shouldUseGemini('translate', prefs)) {
+      const providerType = await this.getProviderType('translate', prefs);
+      
+      if (providerType === 'openai-compatible') {
+        const openai = await this.getOpenAIClient(prefs);
+        let src = prefs.userSettings?.translation?.sourceLanguage || 'auto';
+        let tgt = prefs.userSettings?.translation?.targetLanguage || 'en';
+        
+        // For non-built-in providers, fallback to 'auto' or browser language
+        if (src === 'auto') {
+          src = 'auto-detect';
+        }
+        if (prefs.userSettings?.translation?.autoDetect && !tgt) {
+          tgt = navigator.language.split('-')[0] || 'en';
+        }
+        
+        // Convert language codes to full names for better model understanding
+        const languageNames: Record<string, string> = {
+          'en': 'English',
+          'hu': 'Hungarian',
+          'es': 'Spanish',
+          'fr': 'French',
+          'de': 'German',
+          'zh': 'Chinese',
+          'ja': 'Japanese',
+          'ko': 'Korean',
+          'ru': 'Russian',
+          'pt': 'Portuguese',
+          'it': 'Italian',
+          'ar': 'Arabic',
+          'hi': 'Hindi',
+          'th': 'Thai',
+          'vi': 'Vietnamese'
+        };
+        
+        const srcLang = languageNames[src] || src;
+        const tgtLang = languageNames[tgt] || tgt;
+        
+        console.log(`🌍 Translation request: ${srcLang} → ${tgtLang}`);
+        
+        const prompt = `Translate the following text from ${srcLang} to ${tgtLang}. Only return the translated text, nothing else:\n\n${text}`;
+        return await openai.generate(prompt);
+      }
+      
+      if (providerType === 'gemini') {
         const gemini = await this.getGeminiClient();
         let src = prefs.userSettings?.translation?.sourceLanguage || 'auto';
         let tgt = prefs.userSettings?.translation?.targetLanguage || 'en';
-        if (src === 'auto' || prefs.userSettings?.translation?.autoDetect) src = await chromeBuiltin.detectLanguage(text);
-        if (prefs.userSettings?.translation?.autoDetect && !tgt) tgt = navigator.language.split('-')[0] || 'en';
-        const prompt = `Translate the following text from ${src} to ${tgt}, only return the translated text:\n\n${text}`;
+        
+        // For non-built-in providers, fallback to 'auto' or browser language
+        if (src === 'auto') {
+          src = 'auto-detect';
+        }
+        if (prefs.userSettings?.translation?.autoDetect && !tgt) {
+          tgt = navigator.language.split('-')[0] || 'en';
+        }
+        
+        // Convert language codes to full names for better model understanding
+        const languageNames: Record<string, string> = {
+          'en': 'English',
+          'hu': 'Hungarian',
+          'es': 'Spanish',
+          'fr': 'French',
+          'de': 'German',
+          'zh': 'Chinese',
+          'ja': 'Japanese',
+          'ko': 'Korean',
+          'ru': 'Russian',
+          'pt': 'Portuguese',
+          'it': 'Italian',
+          'ar': 'Arabic',
+          'hi': 'Hindi',
+          'th': 'Thai',
+          'vi': 'Vietnamese'
+        };
+        
+        const srcLang = languageNames[src] || src;
+        const tgtLang = languageNames[tgt] || tgt;
+        
+        console.log(`🌍 Translation request: ${srcLang} → ${tgtLang}`);
+        
+        const prompt = `Translate the following text from ${srcLang} to ${tgtLang}, only return the translated text:\n\n${text}`;
         const res = await gemini.generate?.({ text: prompt });
         return res?.text || this.handleAIError(new Error('Translation failed'), 'Translation');
       }
-      const srcLang = prefs.userSettings?.translation?.sourceLanguage || 'en';
+      
+      // Built-in provider can use Chrome's language detection
+      let srcLang = prefs.userSettings?.translation?.sourceLanguage || 'en';
       const tgtLang = prefs.userSettings?.translation?.targetLanguage || 'en';
+      
+      // Try to detect language only for built-in provider
+      if ((srcLang === 'auto' || prefs.userSettings?.translation?.autoDetect) && chromeBuiltin.detectLanguage) {
+        try {
+          srcLang = await chromeBuiltin.detectLanguage(text);
+        } catch (err) {
+          console.warn('⚠️ Language detection failed, fallback to English:', err);
+          srcLang = 'en';
+        }
+      } else if (srcLang === 'auto') {
+        srcLang = 'en'; // Fallback if detection not available
+      }
+      
       return await Utils.retry(() => chromeBuiltin.translate(text, srcLang, tgtLang), 2, 2000);
     } catch (err) {
       return this.handleAIError(err, 'Translation');
@@ -173,7 +316,20 @@ export class AIService {
   async validate(text: string, preferences?: Preferences): Promise<string> {
     try {
       const prefs = preferences || await preferencesService.getPreferences();
-      if (await this.shouldUseGemini('validate', prefs)) {
+      const providerType = await this.getProviderType('validate', prefs);
+      
+      if (providerType === 'openai-compatible') {
+        const openai = await this.getOpenAIClient(prefs);
+        const strictness = prefs.userSettings?.validation?.strictness || 'medium';
+        const strictPrompt = strictness === 'strict' ? 'Perform a highly critical credibility analysis.' : strictness === 'lenient' ? 'Perform a balanced credibility analysis.' : 'Evaluate credibility and bias.';
+        const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
+        const targetLang = prefs.userSettings?.translation?.targetLanguage || 'en';
+        const langInstruction = autoTranslate ? ` Respond in ${targetLang} language.` : '';
+        const prompt = `${strictPrompt}${langInstruction}\nAnalyze the text:\n\n${text}`;
+        return await openai.generate(prompt);
+      }
+      
+      if (providerType === 'gemini') {
         const gemini = await this.getGeminiClient();
         const strictness = prefs.userSettings?.validation?.strictness || 'medium';
         const temp = strictness === 'strict' ? 0.1 : strictness === 'lenient' ? 0.5 : 0.3;
@@ -185,6 +341,7 @@ export class AIService {
         const res = await gemini.generate?.({ text: prompt, temperature: temp });
         return res?.text || this.handleAIError(new Error('Validation failed'), 'Validation');
       }
+      
       const strict = prefs.userSettings?.validation?.strictness || 'medium';
       return await Utils.retry(() => chromeBuiltin.validate(text, strict), 2, 2000);
     } catch (err) {
@@ -195,7 +352,19 @@ export class AIService {
   async rewrite(text: string, preferences?: Preferences): Promise<string> {
     try {
       const prefs = preferences || await preferencesService.getPreferences();
-      if (await this.shouldUseGemini('rewrite', prefs)) {
+      const providerType = await this.getProviderType('rewrite', prefs);
+      
+      if (providerType === 'openai-compatible') {
+        const openai = await this.getOpenAIClient(prefs);
+        const { style, tone, complexity } = prefs.userSettings?.rewrite || { style: 'neutral', tone: 'professional', complexity: 'intermediate' };
+        const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
+        const targetLang = prefs.userSettings?.translation?.targetLanguage || 'en';
+        const langInstruction = autoTranslate ? ` Respond in ${targetLang} language.` : '';
+        const prompt = `Please rewrite the following text with a ${tone} tone, ${style} style, and ${complexity} complexity.${langInstruction}\n\n${text}`;
+        return await openai.generate(prompt);
+      }
+      
+      if (providerType === 'gemini') {
         const gemini = await this.getGeminiClient();
         const { style, tone, complexity } = prefs.userSettings?.rewrite || { style: 'neutral', tone: 'professional', complexity: 'intermediate' };
         const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
@@ -205,6 +374,7 @@ export class AIService {
         const res = await gemini.generate?.({ text: prompt, temperature: 0.1 });
         return res?.text || this.handleAIError(new Error('Rewriting failed'), 'Rewriting');
       }
+      
       const { style, tone, complexity } = prefs.userSettings?.rewrite || { style: 'neutral', tone: 'professional', complexity: 'intermediate' };
       return await Utils.retry(() => chromeBuiltin.rewrite(text, style, tone, complexity), 2, 2000);
     } catch (err) {
@@ -215,7 +385,18 @@ export class AIService {
   async customPrompt(prompt: string, text: string, preferences?: Preferences): Promise<string> {
     try {
       const prefs = preferences || await preferencesService.getPreferences();
-      if (await this.shouldUseGemini('customPrompt', prefs)) {
+      const providerType = await this.getProviderType('customPrompt', prefs);
+      
+      if (providerType === 'openai-compatible') {
+        const openai = await this.getOpenAIClient(prefs);
+        const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
+        const targetLang = prefs.userSettings?.translation?.targetLanguage || 'en';
+        const langInstruction = autoTranslate ? ` Respond in ${targetLang} language.` : '';
+        const full = `You are a helpful assistant. User prompt: "${prompt}".${langInstruction} Respond:\n\n${text}`;
+        return await openai.generate(full);
+      }
+      
+      if (providerType === 'gemini') {
         const gemini = await this.getGeminiClient();
         const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
         const targetLang = prefs.userSettings?.translation?.targetLanguage || 'en';
@@ -224,6 +405,7 @@ export class AIService {
         const res = await gemini.generate?.({ text: full, temperature: 0.1 });
         return res?.text || this.handleAIError(new Error('Prompting failed'), 'Custom prompt');
       }
+      
       return await Utils.retry(() => chromeBuiltin.customPrompt(prompt, text), 2, 2000);
     } catch (err) {
       return this.handleAIError(err, 'Custom prompt');
@@ -233,7 +415,18 @@ export class AIService {
   async cleanAndConvertToMarkdown(html: string, preferences?: Preferences): Promise<string> {
     try {
       const prefs = preferences || await preferencesService.getPreferences();
-      if (await this.shouldUseGemini('cleanAndConvertToMarkdown', prefs)) {
+      const providerType = await this.getProviderType('cleanAndConvertToMarkdown', prefs);
+      
+      if (providerType === 'openai-compatible') {
+        const openai = await this.getOpenAIClient(prefs);
+        const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
+        const targetLang = prefs.userSettings?.translation?.targetLanguage || 'en';
+        const langInstruction = autoTranslate ? ` Respond in ${targetLang} language.` : '';
+        const prompt = `Convert the following HTML into clean markdown.${langInstruction}\n\n${html}`;
+        return await openai.generate(prompt);
+      }
+      
+      if (providerType === 'gemini') {
         const gemini = await this.getGeminiClient();
         const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
         const targetLang = prefs.userSettings?.translation?.targetLanguage || 'en';
@@ -242,6 +435,7 @@ export class AIService {
         const res = await gemini.generate?.({ text: prompt, temperature: 0.1 });
         return res?.text || this.handleAIError(new Error('Page clipping failed'), 'Page clipping');
       }
+      
       const MAX = 10000;
       if (html.length > MAX) return await this.summarizeLargeText(html, undefined, prefs);
       return await Utils.retry(() => chromeBuiltin.cleanAndConvertToMarkdown(html), 2, 2000);
@@ -300,7 +494,7 @@ export class AIService {
         originalText: text,
         processedText: processed || '',
         operationType: operation,
-        provider: (await this.shouldUseGemini(operationName)) ? 'gemini' : 'built-in',
+        provider: await this.getProviderType(operationName),
         timestamp: ts
       };
       return result;

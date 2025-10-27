@@ -127,8 +127,8 @@
               </div>
 
               <div class="hero-footer">
-                <p class="copyright">© 2025 - <a href="https://github.com/bzddbz" target="_blank">BZD</a></p>
                 <p class="built-with">Built with ❤️ for the Chrome Built-in AI Challenge</p>
+                <p class="built-with">Support the dev with a cup of coffee <a href="https://buymeacoffee.com/bzddbz" target="_blank" class="setup-link">here</a></p>
               </div>
             </div>
           </section>
@@ -511,6 +511,72 @@
                 Gemini API by default. When disabled, it will use Chrome's
                 built-in AI APIs when available (requires Google Canary with
                 flags enabled).
+              </small>
+            </div>
+          </div>
+
+          <!-- OpenAI-compatible Provider Settings (Ollama, LM Studio, etc.) -->
+          <div class="settings-section">
+            <h3><span class="material-icons">dns</span> Local AI Provider (OpenAI-compatible)</h3>
+            <div class="setting-item">
+              <label>
+                <input type="checkbox" id="openai-enabled" />
+                Enable OpenAI-compatible Provider
+              </label>
+              <small class="setting-hint">
+                Connect to local AI servers like Ollama, LM Studio, LocalAI, etc. for fully offline AI processing.
+              </small>
+            </div>
+            <div class="setting-item">
+              <label for="openai-provider">Provider Type:</label>
+              <select id="openai-provider" class="custom-input">
+                <option value="ollama">Ollama</option>
+                <option value="lmstudio">LM Studio</option>
+                <option value="localai">LocalAI</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="setting-item">
+              <label for="openai-base-url">Base URL:</label>
+              <input
+                type="text"
+                id="openai-base-url"
+                class="custom-input"
+                placeholder="http://localhost:11434"
+              />
+              <small class="setting-hint">
+                Default Ollama: http://localhost:11434<br>
+                Default LM Studio: http://localhost:1234
+              </small>
+            </div>
+            <div class="setting-item">
+              <label for="openai-model">Model Name:</label>
+              <input
+                type="text"
+                id="openai-model"
+                class="custom-input"
+                placeholder="llama3:8b"
+              />
+              <small class="setting-hint">
+                Examples: llama3:8b, mistral:7b, phi3:mini
+              </small>
+            </div>
+            <div class="setting-item">
+              <label for="openai-api-key">API Key (Optional):</label>
+              <input
+                type="password"
+                id="openai-api-key"
+                class="custom-input"
+                placeholder="Optional for most local servers"
+              />
+              <small class="setting-hint">
+                Most local servers don't require an API key.
+              </small>
+            </div>
+            <div class="setting-item">
+              <small class="setting-hint" style="color: var(--success-color);">
+                ✨ <strong>Priority:</strong> OpenAI-compatible → Gemini → Chrome Built-in AI<br>
+                🔒 <strong>Privacy:</strong> All data stays on your local machine when using local providers.
               </small>
             </div>
           </div>
