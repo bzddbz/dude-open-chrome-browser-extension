@@ -1,7 +1,45 @@
 // Background script for Dude Chrome Extension
 // Handles extension lifecycle, messaging, and side panel management
 
+import { aiService } from './services/ai.service';
+
 export {};
+
+/**
+ * Capture screenshot of the active tab's visible area
+ * Uses chrome.tabs.captureVisibleTab with null windowId (current window)
+ */
+async function handleScreenshotCapture(): Promise<string> {
+  try {
+    console.log('📸 Background: Starting screenshot capture...');
+    
+    // Check permissions first
+    const hasPermissions = await chrome.permissions.contains({
+      origins: ['https://*/*', 'http://*/*']
+    });
+    
+    console.log('🔐 Host permissions status:', hasPermissions);
+    
+    if (!hasPermissions) {
+      throw new Error('Missing host permissions. Please grant site access to the extension.');
+    }
+
+    // Capture current window (no windowId parameter)
+    // Requires host_permissions: ["https://*/*", "http://*/*"] in manifest
+    const dataUrl = await chrome.tabs.captureVisibleTab({
+      format: 'png'
+    });
+
+    console.log('✅ Screenshot captured successfully:', {
+      size: Math.round(dataUrl.length / 1024) + 'KB'
+    });
+
+    return dataUrl;
+  } catch (error) {
+    console.error('❌ Screenshot capture error:', error);
+    throw error;
+  }
+}
 
 // AI availability check
 async function checkAIAvailability() {
@@ -90,19 +128,37 @@ function mapStatus(status: any): 'readily' | 'after-download' | 'no' {
 }
 
 // Handle extension installation
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async () => {
   console.log('🤖 Dude Extension installed');
-    checkAIAvailability();
+  
+  // Clean up any pending requests from previous session
+  try {
+    aiService.cleanup();
+  } catch (error) {
+    console.warn('⚠️ AI service cleanup failed:', error);
+  }
+  
+  checkAIAvailability();
 });
 
-chrome.runtime.onStartup.addListener(() => {
+chrome.runtime.onStartup.addListener(async () => {
+  console.log('🤖 Dude Extension startup');
+  
+  // Clean up any pending requests from previous session
+  try {
+    aiService.cleanup();
+  } catch (error) {
+    console.warn('⚠️ AI service cleanup failed:', error);
+  }
+  
   checkAIAvailability();
 });
 
 // Handle messages from content scripts
 chrome.runtime.onMessage.addListener((request: { 
-  action: string, 
-  data: { 
+  action?: string,
+  type?: string,
+  data?: { 
     url: string, 
     snippet: string, 
     contextText: string, 
@@ -111,6 +167,19 @@ chrome.runtime.onMessage.addListener((request: {
     origin: string 
   } 
 }, _sender, sendResponse) => {
+  // Handle screenshot capture request
+  if (request.type === 'CAPTURE_SCREENSHOT') {
+    handleScreenshotCapture()
+      .then(dataUrl => {
+        sendResponse({ success: true, dataUrl });
+      })
+      .catch(error => {
+        console.error('❌ Screenshot capture failed in background:', error);
+        sendResponse({ success: false, error: error.message });
+      });
+    return true; // Keep channel open for async response
+  }
+
   if (request.action === 'updateSelectedText') {
     // Store the latest selection for side panel access
     chrome.storage.local.set({ lastSelection: request.data });

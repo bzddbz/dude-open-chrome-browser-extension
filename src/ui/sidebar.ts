@@ -228,7 +228,15 @@ export class Sidebar {
         functionButtons.forEach(button => {
             button.addEventListener('click', (e: Event) => {
                 const target = e.currentTarget as HTMLElement;
-                const operation = target.id.replace('-btn', '') as TextOperationType;
+                const buttonId = target.id;
+                
+                // Special handling for analyze-screen button
+                if (buttonId === 'analyze-screen-btn') {
+                    this.showScreenshotPrompt();
+                    return;
+                }
+                
+                const operation = buttonId.replace('-btn', '') as TextOperationType;
                 this.handleProcessText(operation);
             });
         });
@@ -243,6 +251,22 @@ export class Sidebar {
         exportBtn?.addEventListener('click', () => this.handleExport());
         clearSessionBtn?.addEventListener('click', () => this.handleClearSession());
         clearTextBtn?.addEventListener('click', () => this.handleClearText());
+
+        // Screenshot analysis buttons
+        const screenshotAnalyzeBtn = document.getElementById('screenshot-analyze-btn');
+        const screenshotCancelBtn = document.getElementById('screenshot-cancel-btn');
+        
+        screenshotAnalyzeBtn?.addEventListener('click', () => this.handleAnalyzeScreen());
+        screenshotCancelBtn?.addEventListener('click', () => this.hideScreenshotPrompt());
+        
+        // Screenshot prompt - handle Enter key
+        const screenshotPrompt = document.getElementById('screenshot-prompt') as HTMLTextAreaElement;
+        screenshotPrompt?.addEventListener('keypress', (e: KeyboardEvent) => {
+            if (e.key === 'Enter' && !e.shiftKey) { // Shift+Enter for new line
+                e.preventDefault();
+                this.handleAnalyzeScreen();
+            }
+        });
 
         // History buttons
         const exportAllHistoryBtn = document.getElementById('export-all-history-btn');
@@ -290,6 +314,132 @@ export class Sidebar {
         } finally {
             this.showLoading(false);
         }
+    }
+
+    /**
+     * Show screenshot analysis prompt
+     * @since 1.0.0
+     */
+    private showScreenshotPrompt(): void {
+        console.log('🖼️ showScreenshotPrompt called');
+        
+        const screenshotSection = document.getElementById('screenshot-section');
+        if (screenshotSection) {
+            screenshotSection.classList.remove('hidden');
+            
+            // Focus on the prompt input
+            const promptInput = document.getElementById('screenshot-prompt') as HTMLTextAreaElement;
+            if (promptInput) {
+                promptInput.focus();
+            }
+        }
+    }
+
+    /**
+     * Hide screenshot analysis prompt
+     * @since 1.0.0
+     */
+    private hideScreenshotPrompt(): void {
+        console.log('🖼️ hideScreenshotPrompt called');
+        
+        const screenshotSection = document.getElementById('screenshot-section');
+        if (screenshotSection) {
+            screenshotSection.classList.add('hidden');
+            
+            // Clear the prompt input
+            const promptInput = document.getElementById('screenshot-prompt') as HTMLTextAreaElement;
+            if (promptInput) {
+                promptInput.value = '';
+            }
+        }
+    }
+
+    /**
+     * Handle screen/image analysis with vision model
+     * @since 1.0.0
+     */
+    private async handleAnalyzeScreen(): Promise<void> {
+        console.log('🖼️ handleAnalyzeScreen called');
+        
+        try {
+            // Get custom question from prompt input
+            const promptInput = document.getElementById('screenshot-prompt') as HTMLTextAreaElement;
+            const customQuestion = promptInput?.value.trim() || undefined;
+            
+            // Hide the prompt section
+            this.hideScreenshotPrompt();
+            
+            this.showLoading(true, 'Capturing screenshot...');
+            
+            // Import DOM-based screenshot utility (more reliable than Chrome API)
+            const { captureVisibleTab } = await import('../utils/dom-screenshot');
+            
+            // Capture screenshot as data URI
+            const screenshotDataUrl = await captureVisibleTab();
+            
+            this.showLoading(true, 'Analyzing image...');
+            
+            console.log('🖼️ Using custom question:', customQuestion || 'Default analysis');
+            
+            // Analyze the screenshot with custom question
+            const analysis = await aiService.analyzeImage(screenshotDataUrl, customQuestion);
+            
+            // Create result object
+            const result: TextOperationResult = {
+                originalText: customQuestion || 'Screenshot analysis',
+                processedText: analysis,
+                operationType: 'custom-prompt' as TextOperationType,
+                provider: 'openai-compatible',
+                timestamp: Date.now()
+            };
+            
+            // Display the result in analyze-screen-result card
+            this.displayVisionResult(result);
+            if (customQuestion && promptInput) {
+                promptInput.value = '';
+            }
+            
+            this.showMessage('Screen analysis completed successfully', 'success');
+
+        } catch (error: any) {
+            console.error('❌ Error analyzing screen:', error);
+            this.showMessage(`Failed to analyze screen: ${error.message || error}`, 'error');
+        } finally {
+            this.showLoading(false);
+        }
+    }
+
+    /**
+     * Display vision analysis result
+     */
+    private displayVisionResult(result: TextOperationResult): void {
+        // Hide all result cards
+        const allResultCards = this.resultsContainer.querySelectorAll('.result-card');
+        allResultCards.forEach(card => card.classList.add('hidden'));
+        
+        // Show analyze-screen result card
+        const resultCard = this.container.querySelector('#analyze-screen-result') as HTMLElement;
+        if (resultCard) {
+            const contentDiv = resultCard.querySelector('.result-content') as HTMLElement;
+            if (contentDiv) {
+                contentDiv.textContent = result.processedText;
+            }
+            resultCard.classList.remove('hidden');
+            
+            // Add to results array
+            this.results.push(result);
+            
+            // Wire up voice button
+            const voiceBtn = resultCard.querySelector('.result-voice-btn') as HTMLButtonElement | null;
+            if (voiceBtn) {
+                const newBtn = voiceBtn.cloneNode(true) as HTMLButtonElement;
+                voiceBtn.parentNode?.replaceChild(newBtn, voiceBtn);
+                newBtn.addEventListener('click', () => this.handleResultVoiceToggle(resultCard, result));
+            }
+        }
+        
+        // Show results section
+        this.resultsContainer.classList.remove('hidden');
     }
 
     /**

@@ -5,6 +5,10 @@ APIs or a cloud Gemini client to summarize, translate, validate, and rewrite web
 content. It includes features like speech output, session history, export functionality,
 and API key obfuscation for enhanced security.
 
+## You can always support the project here, or say thanks!
+
+https://buymeacoffee.com/bzddbz
+
 ## Features
 
 - **🧠 AI-Powered Text Processing**: Summarize, translate, validate, and rewrite selected text
@@ -134,3 +138,7 @@ npm run lint
 ## License
 
 Apache-2.0
+
+## You can always support the project here, or say thanks!
+
+https://buymeacoffee.com/bzddbz

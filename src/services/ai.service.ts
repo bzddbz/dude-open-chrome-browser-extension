@@ -10,8 +10,22 @@ import { deobfuscateApiKey } from '../utils/crypto';
 
 export class AIService {
   private static instance: AIService;
+  private openaiClients: Map<string, any> = new Map(); // Cache clients by config key
 
   private constructor() {}
+
+  /**
+   * Clean up all cached clients (call this when extension shuts down or restarts)
+   */
+  cleanup(): void {
+    console.log('🧹 Cleaning up AI service and all cached clients');
+    for (const client of this.openaiClients.values()) {
+      if (client && typeof client.cleanup === 'function') {
+        client.cleanup();
+      }
+    }
+    this.openaiClients.clear();
+  }
 
   static getInstance(): AIService {
     if (!AIService.instance) AIService.instance = new AIService();
@@ -120,12 +134,26 @@ export class AIService {
       throw new Error('OpenAI-compatible provider not configured');
     }
 
+    // Create a cache key based on config
+    const cacheKey = `${config.baseUrl}:${config.model}:${config.apiKey ? 'with-key' : 'no-key'}`;
+    
+    // Return cached client if exists
+    if (this.openaiClients.has(cacheKey)) {
+      console.log('♻️ Reusing cached OpenAI client');
+      return this.openaiClients.get(cacheKey);
+    }
+
+    // Create new client and cache it
+    console.log('🆕 Creating new OpenAI client');
     const { default: createOpenAIClient } = await import('../core/ai-openai-client');
-    return await createOpenAIClient({
+    const client = await createOpenAIClient({
       baseUrl: config.baseUrl,
       model: config.model,
       apiKey: config.apiKey ? deobfuscateApiKey(config.apiKey) : undefined
     });
+    
+    this.openaiClients.set(cacheKey, client);
+    return client;
   }
 
   /**
@@ -441,6 +469,69 @@ export class AIService {
       return await Utils.retry(() => chromeBuiltin.cleanAndConvertToMarkdown(html), 2, 2000);
     } catch (err) {
       return this.handleAIError(err, 'Page clipping');
+    }
+  }
+
+  /**
+   * Analyze an image using vision-capable model
+   * @param imageUrl - URL or data URI of the image
+   * @param question - Question to ask about the image (optional, defaults to description)
+   * @param preferences - User preferences
+   */
+  async analyzeImage(imageUrl: string, question?: string, preferences?: Preferences): Promise<string> {
+    try {
+      const prefs = preferences || await preferencesService.getPreferences();
+      const providerType = await this.getProviderType('customPrompt', prefs); // Use customPrompt as fallback
+      
+      // Create system message for better context
+      const systemMessage = 'You are analyzing a screenshot of a webpage. Focus on the content and information visible on the page, not on browser elements like tabs, toolbars, or window frames.';
+      
+      // User question with smart defaults
+      const userQuestion = question || 'Analyze this webpage screenshot. Describe what you see, focusing on the main content, text, images, charts, or any other relevant information displayed on the page.';
+      
+      if (providerType === 'openai-compatible') {
+        const openai = await this.getOpenAIClient(prefs);
+        const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
+        const targetLang = prefs.userSettings?.translation?.targetLanguage || 'en';
+        const langInstruction = autoTranslate ? ` Please respond in ${targetLang} language.` : '';
+        
+        console.log('🖼️ Analyzing image with OpenAI-compatible provider');
+        console.log('🖼️ User question:', userQuestion);
+        
+        try {
+          return await openai.analyzeImageWithSystem(imageUrl, userQuestion + langInstruction, systemMessage);
+        } catch (visionError) {
+          console.warn('⚠️ Vision analysis failed, trying text-only fallback:', visionError);
+          
+          // Fallback: Analyze DOM screenshot metadata instead of image content
+          const config = prefs?.userSettings?.openaiCompatible;
+          const modelName = config?.model || 'unknown';
+          
+          if (modelName.toLowerCase().includes('gemma') || 
+              modelName.toLowerCase().includes('llama') && !modelName.toLowerCase().includes('llava')) {
+            const fallbackPrompt = `The model "${modelName}" doesn't support vision. This was a screenshot analysis request. ${langInstruction}
+            
+Please respond with: "I can see this was a screenshot analysis request, but I'm a text-only model (${modelName}) and cannot analyze images. 
+            
+To use the vision feature, please load a vision-capable model in Jan such as:
+- Qwen2.5-VL-7B-Instruct-Q4_K_M (best quality, slower)
+- MiniCPM-V-2_6-int4 (faster alternative)
+- LLaVA-1.6-Mistral-7B (good balance)
+
+Then try the screenshot analysis again."`;
+            
+            return await openai.generate(fallbackPrompt);
+          }
+          
+          throw visionError;
+        }
+      }
+      
+      // Gemini and Built-in don't support vision through our current implementation
+      throw new Error('Vision analysis requires OpenAI-compatible provider (e.g., Jan with Qwen2.5-VL)');
+      
+    } catch (err) {
+      return this.handleAIError(err, 'Image analysis');
     }
   }
 

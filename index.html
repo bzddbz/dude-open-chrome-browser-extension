@@ -147,7 +147,37 @@
               <button id="rewrite-btn" class="function-btn" title="Rewrite">
                 <span class="material-icons">edit</span>
               </button>
+              <button id="analyze-screen-btn" class="function-btn" title="Analyze Screen (Vision)">
+                <span class="material-icons">visibility</span>
+              </button>
             </div>
+            
+            <!-- Screenshot Analysis Section -->
+            <div id="screenshot-section" class="screenshot-section hidden">
+              <div class="section-header">
+                <span class="material-icons section-icon">camera_alt</span>
+                <h2 class="section-title">Screenshot Analysis</h2>
+              </div>
+              <div class="screenshot-prompt-container">
+                <textarea
+                  id="screenshot-prompt"
+                  class="screenshot-prompt-input"
+                  placeholder="Ask me about the screenshot... (e.g., 'Analyze this chart', 'What breed is this dog?', 'Summarize the main content')"
+                  rows="2"
+                ></textarea>
+                <div class="screenshot-buttons">
+                  <button id="screenshot-analyze-btn" class="primary-btn">
+                    <span class="material-icons">visibility</span>
+                    Analyze Screenshot
+                  </button>
+                  <button id="screenshot-cancel-btn" class="secondary-btn">
+                    <span class="material-icons">close</span>
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+            
             <div class="section-header">
               <span class="material-icons section-icon">article</span>
               <h2 class="section-title">Process Text</h2>
@@ -223,6 +253,17 @@
                     <span class="material-icons">edit</span> Prompt
                   </h4>
                   <button class="result-voice-btn" title="Read aloud" data-result-type="prompt">
+                    <span class="material-icons">volume_up</span>
+                  </button>
+                </div>
+                <div class="result-content"></div>
+              </div>
+              <div id="analyze-screen-result" class="result-card hidden">
+                <div class="result-header">
+                  <h4 class="result-title">
+                    <span class="material-icons">visibility</span> Screen Analysis
+                  </h4>
+                  <button class="result-voice-btn" title="Read aloud" data-result-type="analyze-screen">
                     <span class="material-icons">volume_up</span>
                   </button>
                 </div>

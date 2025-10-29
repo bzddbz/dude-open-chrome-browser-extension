@@ -15,9 +15,9 @@ export default defineConfig({
         entryFileNames: '[name].js',
         chunkFileNames: '[name].js',
         assetFileNames: '[name].[ext]',
-        format: 'es'
+        format: 'es' // Keep ES format but handle imports differently
       },
-      // Prevent code splitting for background script
+      // Allow external imports to be bundled
       external: []
     },
     minify: false,
