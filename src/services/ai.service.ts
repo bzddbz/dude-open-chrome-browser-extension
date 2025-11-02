@@ -527,8 +527,42 @@ Then try the screenshot analysis again."`;
         }
       }
       
-      // Gemini and Built-in don't support vision through our current implementation
-      throw new Error('Vision analysis requires OpenAI-compatible provider (e.g., Jan with Qwen2.5-VL)');
+      if (providerType === 'gemini') {
+        const gemini = await this.getGeminiClient();
+        const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
+        const targetLang = prefs.userSettings?.translation?.targetLanguage || 'en';
+        const langInstruction = autoTranslate ? ` Please respond in ${targetLang} language.` : '';
+        
+        console.log('🖼️ Analyzing image with Gemini provider');
+        console.log('🖼️ User question:', userQuestion);
+        
+        try {
+          // Gemini uses a different approach - include system context in the prompt
+          const fullPrompt = `${systemMessage}\n\n${userQuestion}${langInstruction}`;
+          const result = await gemini.analyzeImage?.(imageUrl, fullPrompt);
+          return result?.text || this.handleAIError(new Error('Gemini vision analysis failed'), 'Image analysis');
+        } catch (visionError) {
+          console.warn('⚠️ Gemini vision analysis failed:', visionError);
+          
+          // Check if it's an API key issue
+          if (visionError instanceof Error && 
+              (visionError.message.includes('API key') || visionError.message.includes('401'))) {
+            return `I need a valid Gemini API key to analyze images.
+
+Please check your Gemini API key in Settings and make sure you have:
+1. A valid Google AI Studio API key
+2. Vision-capable model selected (like gemini-2.0-flash-lite)
+3. Cloud-first mode enabled
+
+Then try the screenshot analysis again.`;
+          }
+          
+          throw visionError;
+        }
+      }
+      
+      // Built-in doesn't support vision
+      throw new Error('Vision analysis requires OpenAI-compatible provider (e.g., Jan with Qwen2.5-VL) or Gemini with API key');
       
     } catch (err) {
       return this.handleAIError(err, 'Image analysis');

@@ -299,11 +299,93 @@ const shouldUseGemini = async (): Promise<boolean> => {
     return generate({ instruction: text, input: '' }, options);
   }
 
+  async function analyzeImage(imageDataUrl: string, prompt: string, options?: any) {
+    const apiKey = await getApiKey();
+    const model = await getModel();
+    const useGemini = await shouldUseGemini();
+
+    if (!useGemini || !apiKey) {
+      console.warn('[GeminiClient] Vision analysis requires API key');
+      throw new Error('Gemini vision analysis requires API key');
+    }
+
+    try {
+      console.log('[GeminiClient] Making vision API request with model:', model);
+      
+      // Convert data URL to base64 (remove data:image/png;base64, prefix)
+      const base64Data = imageDataUrl.replace(/^data:image\/[a-z]+;base64,/, '');
+      
+      const headers = {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey
+      };
+
+      const requestBody = {
+        contents: [{
+          parts: [
+            {
+              text: prompt
+            },
+            {
+              inline_data: {
+                mime_type: "image/png",
+                data: base64Data
+              }
+            }
+          ]
+        }],
+        generationConfig: {
+          temperature: options?.temperature || 0.7,
+          maxOutputTokens: options?.maxTokens || 2048,
+          topP: options?.topP || 0.95,
+          topK: options?.topK || 40
+        }
+      };
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(requestBody),
+          signal: controller.ac.signal
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[GeminiClient] Vision API error:', response.status, errorText);
+        throw new Error(`Gemini Vision API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || 
+                   '[No response from Gemini Vision]';
+
+      console.log('[GeminiClient] Vision API request successful');
+      return { text };
+    } catch (error: any) {
+      console.warn('[GeminiClient] Vision analysis failed', error);
+      
+      if (error.name === 'AbortError') {
+        return { text: '[Vision request cancelled]' };
+      }
+      
+      if (error.message?.includes('401') || error.message?.includes('API key')) {
+        console.error('[GeminiClient] Invalid API key for vision');
+        return { text: '[Invalid API key - please check your Gemini API key in settings]' };
+      }
+      
+      throw error;
+    }
+  }
+
   function cancel() {
     try { controller.ac.abort(); } catch (e) { /* ignore */ }
   }
 
-  return { generate, stream, write, cancel };
+  return { generate, stream, write, cancel, analyzeImage };
 }
 
 // Also export as createGeminiClient for backward compatibility

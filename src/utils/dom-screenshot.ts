@@ -94,10 +94,32 @@ export async function captureVisibleAreaDOM(
 }
 
 /**
- * Request screenshot from content script using html2canvas
+ * Request screenshot via background script, fallback to DOM capture
  * This is called from sidebar/popup
  */
 export async function captureVisibleTab(): Promise<string> {
+  // Try background script first (has proper permissions)
+  try {
+    console.log('📸 Requesting screenshot from background script...');
+    
+    const response = await chrome.runtime.sendMessage({
+      type: 'CAPTURE_SCREENSHOT'
+    });
+    
+    if (response?.success && response?.dataUrl) {
+      console.log('✅ Background screenshot successful:', {
+        size: Math.round(response.dataUrl.length / 1024) + 'KB'
+      });
+      
+      return response.dataUrl;
+    } else {
+      throw new Error(response?.error || 'Background screenshot failed');
+    }
+  } catch (backgroundError) {
+    console.warn('⚠️ Background screenshot failed, falling back to DOM capture:', backgroundError);
+  }
+  
+  // Fallback to DOM-based capture
   try {
     console.log('📸 Requesting DOM-based screenshot from content script...');
 
@@ -132,21 +154,71 @@ export async function captureVisibleTab(): Promise<string> {
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Simple text-based content capture for testing
-            ctx.fillStyle = '#000000';
-            ctx.font = '16px Arial';
-            ctx.fillText('DOM Content Captured', 20, 50);
-            ctx.fillText(`Page: ${document.title}`, 20, 80);
-            ctx.fillText(`URL: ${window.location.href}`, 20, 110);
-            ctx.fillText(`Size: ${canvas.width}x${canvas.height}`, 20, 140);
-            ctx.fillText(`Time: ${new Date().toLocaleTimeString()}`, 20, 170);
+            // Try to capture actual visual content using foreignObject SVG approach
+            const data = `
+              <svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">
+                <foreignObject width="100%" height="100%">
+                  <div xmlns="http://www.w3.org/1999/xhtml" style="width: ${canvas.width}px; height: ${canvas.height}px; overflow: hidden;">
+                    ${document.documentElement.outerHTML}
+                  </div>
+                </foreignObject>
+              </svg>
+            `;
 
-            // Add some page info
-            const bodyText = document.body.innerText.substring(0, 200);
-            const lines = bodyText.split('\n').slice(0, 10);
-            lines.forEach((line, index) => {
-              ctx.fillText(line.substring(0, 80), 20, 200 + (index * 20));
-            });
+            const svgBlob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
+            const svgUrl = URL.createObjectURL(svgBlob);
+
+            const img = new Image();
+            
+            img.onload = () => {
+              try {
+                // Draw the actual page content
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(svgUrl);
+                
+                const dataUrl = canvas.toDataURL('image/png', 0.95);
+                
+                console.log('✅ Visual content capture completed:', {
+                  size: Math.round(dataUrl.length / 1024) + 'KB'
+                });
+
+                resolve(dataUrl);
+              } catch (drawError) {
+                console.warn('⚠️ SVG approach failed, using fallback:', drawError);
+                URL.revokeObjectURL(svgUrl);
+                
+                // Fallback: simple text capture
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#000000';
+                ctx.font = '16px Arial';
+                ctx.fillText('Screenshot captured from:', 20, 50);
+                ctx.fillText(document.title, 20, 80);
+                ctx.fillText(window.location.href, 20, 110);
+                
+                const fallbackDataUrl = canvas.toDataURL('image/png', 0.95);
+                resolve(fallbackDataUrl);
+              }
+            };
+            
+            img.onerror = () => {
+              console.warn('⚠️ SVG image load failed, using text fallback');
+              URL.revokeObjectURL(svgUrl);
+              
+              // Fallback: simple text capture
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              ctx.fillStyle = '#000000';
+              ctx.font = '16px Arial';
+              ctx.fillText('Page captured:', 20, 50);
+              ctx.fillText(document.title, 20, 80);
+              ctx.fillText(window.location.href, 20, 110);
+              
+              const fallbackDataUrl = canvas.toDataURL('image/png', 0.95);
+              resolve(fallbackDataUrl);
+            };
+            
+            img.src = svgUrl;
 
             // Convert to data URL
             const dataUrl = canvas.toDataURL('image/png', 0.95);
