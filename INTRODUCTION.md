@@ -61,7 +61,6 @@ Dude addresses these challenges with a comprehensive AI-powered toolkit:
    - `chrome.sidePanel` - Main user interface container
    - `chrome.storage.local` - Persistent local data storage with obfuscation
    - `chrome.storage.session` - Temporary session data persistence
-   - `chrome.scripting` - Content script injection for text selection
    - `chrome.tabs` - Tab management and navigation
    - `chrome.runtime` - Extension ID for obfuscation key generation
 
@@ -109,7 +108,7 @@ The side panel interface provides:
 - **No Console Logging**: API keys never appear in browser console logs
 - **Encrypted Storage**: Sensitive data securely stored in chrome.storage.local
 - **CSP Compliant**: Strict Content Security Policy implementation
-- **Minimal Permissions**: Only essential browser permissions requested (activeTab, storage, scripting, sidePanel)
+- **Minimal Permissions**: Only essential browser permissions requested (activeTab, storage, sidePanel)
 
 ### 🌟 Innovation & Impact
 
