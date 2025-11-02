@@ -45,40 +45,53 @@ Dude addresses these challenges with a comprehensive AI-powered toolkit:
 ### 🔧 Technical Implementation
 
 #### APIs Used
-1. **Chrome Gemini Nano API**
-   - `window.ai.summarizer.create()` - Text summarization with configurable options
-   - `window.ai.writer.create()` - Content writing and rewriting improvement
-   - `window.ai.translator.create()` - Multi-language translation with source/target language
+1. **Chrome Built-in AI APIs (Gemini Nano)**
+   - `window.ai.summarizer.create()` - Text summarization with configurable length/type
+   - `window.ai.writer.create()` - Content validation and rewriting with structured prompts
+   - `window.ai.translator.create()` - Multi-language translation (15+ languages)
    - `window.ai.languageDetector.create()` - Automatic language detection with confidence scores
-   - `window.ai.languageModel.create()` - Custom prompt processing with prioritized AI
+   - **Note**: Output languages limited to English, Spanish, and Japanese - auto-translation workaround implemented
 
-2. **Web Speech API**
+2. **Google Gemini API (Cloud Fallback)**
+   - `gemini-2.0-flash-lite` model for generation tasks
+   - Streaming support for real-time responses
+   - Full language support without Built-in AI limitations
+   - Secure API key storage with XOR obfuscation
+
+3. **OpenAI-Compatible API Support**
+   - Compatible with Ollama, LM Studio, LocalAI, Oobabooga
+   - Local/offline LLM integration
+   - Standard OpenAI chat completion format
+   - Configurable base URL and model selection
+
+4. **Web Speech API**
    - `SpeechSynthesisUtterance` - Text-to-speech output with language/voice selection
    - `speechSynthesis.speak()` - Voice playback with event handling
-   - Voice event handling for start/end/error states
+   - Voice event handling for start/end/error states with visual feedback
 
-3. **Chrome Extension APIs**
+5. **Chrome Extension APIs**
    - `chrome.sidePanel` - Main user interface container
    - `chrome.storage.local` - Persistent local data storage with obfuscation
-   - `chrome.storage.session` - Temporary session data persistence
+   - `chrome.storage.session` - Temporary session data and AI availability tracking
    - `chrome.tabs` - Tab management and navigation
-   - `chrome.runtime` - Extension ID for obfuscation key generation
 
 #### Architecture Highlights
 - **Modular TypeScript Architecture**: Clean separation of concerns with service layers
-- **AI Provider Factory Pattern**: Seamless fallback between built-in AI and cloud APIs
-- **Privacy-First Design**: All processing happens locally with optional cloud backup
-- **Graceful Degradation**: Full functionality even when APIs are unavailable
+- **Multi-Provider AI System**: Seamless switching between Built-in AI, Gemini, and OpenAI-compatible providers
+- **Privacy-First Design**: All processing happens locally when possible with optional cloud backup
+- **Language Workaround Layer**: Auto-translate for Built-in AI's en/es/ja limitation
+- **Temporal Context Injection**: Dynamic date insertion prevents AI knowledge cutoff issues
 - **Comprehensive Error Handling**: User-friendly error messages and recovery options
 - **Secure Key Management**: XOR cipher + Base64 encoding for API key obfuscation
 
 #### Key Technical Features
-- **Smart AI Orchestration**: Automatic selection of best available AI model based on preferences
+- **Smart AI Orchestration**: Automatic selection of best available AI model based on preferences (Built-in → Gemini → OpenAI-compatible)
 - **Retry Logic**: Robust error recovery with exponential backoff for network failures
 - **Language Detection Pipeline**: Array-based language detection with confidence scoring
 - **Performance Optimization**: Efficient DOM operations, caching, and lazy loading
 - **Voice Synthesis Management**: State-based voice playback with visual feedback
-- **Auto-Translation Layer**: Prompt-level language instruction for efficient token usage
+- **Auto-Translation Layer**: Efficient prompt-level language instruction (not post-processing)
+- **Knowledge Cutoff Fix**: All validate functions inject current date to prevent false speculation flags
 
 ### 🎨 User Experience
 
@@ -108,7 +121,8 @@ The side panel interface provides:
 - **No Console Logging**: API keys never appear in browser console logs
 - **Encrypted Storage**: Sensitive data securely stored in chrome.storage.local
 - **CSP Compliant**: Strict Content Security Policy implementation
-- **Minimal Permissions**: Only essential browser permissions requested (activeTab, storage, sidePanel)
+- **Minimal Permissions**: Only 3 essential browser permissions (activeTab, storage, sidePanel)
+  - **Removed scripting permission** to comply with Chrome Web Store policies (v0.0.2)
 
 ### 🌟 Innovation & Impact
 

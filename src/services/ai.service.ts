@@ -321,11 +321,39 @@ export class AIService {
       if (providerType === 'openai-compatible') {
         const openai = await this.getOpenAIClient(prefs);
         const strictness = prefs.userSettings?.validation?.strictness || 'medium';
-        const strictPrompt = strictness === 'strict' ? 'Perform a highly critical credibility analysis.' : strictness === 'lenient' ? 'Perform a balanced credibility analysis.' : 'Evaluate credibility and bias.';
+        const strictPrompt = strictness === 'strict' ? 'Perform a highly critical credibility analysis of this text.' : strictness === 'lenient' ? 'Perform a balanced credibility analysis of this text.' : 'Evaluate the credibility, truthfulness, and potential bias of this text.';
         const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
         const targetLang = prefs.userSettings?.translation?.targetLanguage || 'en';
         const langInstruction = autoTranslate ? ` Respond in ${targetLang} language.` : '';
-        const prompt = `${strictPrompt}${langInstruction}\nAnalyze the text:\n\n${text}`;
+        
+        // Add current date context to help the model understand temporal context
+        const today = new Date();
+        const currentDate = today.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+        
+        const prompt = `IMPORTANT CONTEXT: Today's date is ${currentDate}. When analyzing this text, consider that:
+- Events from 2024-2025 are CURRENT or RECENT, not future speculation
+- References to dates close to ${currentDate} are REAL-TIME events
+- Do NOT flag recent events as "speculation" or "unverifiable future claims"
+- Focus on factual accuracy, source credibility, and logical consistency
+
+${strictPrompt}${langInstruction}
+
+Text to analyze:
+"${text}"
+
+Return your response in this exact format:
+1. *Source Verification*: Assess the credibility of sources (if mentioned) or lack thereof
+2. *Fact-Checking*: Verify factual claims considering the current date is ${currentDate}
+3. *AI Detection*: Evaluate if text shows signs of AI generation (repetitive patterns, generic phrasing)
+4. *Link & Domain Safety*: Check for suspicious URLs or domains (if present)
+5. *Misinformation Risk*: Assess likelihood of misleading or false information
+6. *Bias Detection*: Identify potential bias (political, commercial, cultural, etc.)
+
+Be objective and consider temporal context. Recent dates are NOT speculation.`;
         return await openai.generate(prompt);
       }
       
@@ -333,11 +361,39 @@ export class AIService {
         const gemini = await this.getGeminiClient();
         const strictness = prefs.userSettings?.validation?.strictness || 'medium';
         const temp = strictness === 'strict' ? 0.1 : strictness === 'lenient' ? 0.5 : 0.3;
-        const strictPrompt = strictness === 'strict' ? 'Perform a highly critical credibility analysis.' : strictness === 'lenient' ? 'Perform a balanced credibility analysis.' : 'Evaluate credibility and bias.';
+        const strictPrompt = strictness === 'strict' ? 'Perform a highly critical credibility analysis of this text.' : strictness === 'lenient' ? 'Perform a balanced credibility analysis of this text.' : 'Evaluate the credibility, truthfulness, and potential bias of this text.';
         const autoTranslate = prefs.userSettings?.translation?.autoTranslateResponse ?? false;
         const targetLang = prefs.userSettings?.translation?.targetLanguage || 'en';
         const langInstruction = autoTranslate ? ` Respond in ${targetLang} language.` : '';
-        const prompt = `${strictPrompt}${langInstruction}\nAnalyze the text:\n\n${text}`;
+        
+        // Add current date context to help the model understand temporal context
+        const today = new Date();
+        const currentDate = today.toLocaleDateString('en-US', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric' 
+        });
+        
+        const prompt = `IMPORTANT CONTEXT: Today's date is ${currentDate}. When analyzing this text, consider that:
+- Events from 2024-2025 are CURRENT or RECENT, not future speculation
+- References to dates close to ${currentDate} are REAL-TIME events
+- Do NOT flag recent events as "speculation" or "unverifiable future claims"
+- Focus on factual accuracy, source credibility, and logical consistency
+
+${strictPrompt}${langInstruction}
+
+Text to analyze:
+"${text}"
+
+Return your response in this exact format:
+1. *Source Verification*: Assess the credibility of sources (if mentioned) or lack thereof
+2. *Fact-Checking*: Verify factual claims considering the current date is ${currentDate}
+3. *AI Detection*: Evaluate if text shows signs of AI generation (repetitive patterns, generic phrasing)
+4. *Link & Domain Safety*: Check for suspicious URLs or domains (if present)
+5. *Misinformation Risk*: Assess likelihood of misleading or false information
+6. *Bias Detection*: Identify potential bias (political, commercial, cultural, etc.)
+
+Be objective and consider temporal context. Recent dates are NOT speculation.`;
         const res = await gemini.generate?.({ text: prompt, temperature: temp });
         return res?.text || this.handleAIError(new Error('Validation failed'), 'Validation');
       }

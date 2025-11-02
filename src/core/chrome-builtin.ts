@@ -60,6 +60,16 @@ export class ChromeBuiltIn {
     const length = userPreferences.userSettings.summarization.length;
     const type = userPreferences.userSettings.summarization.type;
     const format = userPreferences.userSettings.summarization.format;
+    
+    // Get output language (for auto-translate feature)
+    const autoTranslate = userPreferences.userSettings.translation?.autoTranslateResponse ?? false;
+    const targetLang = userPreferences.userSettings.translation?.targetLanguage || 'en';
+    
+    // Chrome Summarizer API only supports: en, es, ja
+    // If user wants other languages, we'll translate after summarizing
+    const SUPPORTED_SUMMARIZER_LANGS = ['en', 'es', 'ja'];
+    const needsTranslation = autoTranslate && !SUPPORTED_SUMMARIZER_LANGS.includes(targetLang);
+    const outputLanguage = needsTranslation ? 'en' : (autoTranslate ? targetLang : 'en');
 
     const client = await this.getClient('summarizer');
     if (!client) {
@@ -69,15 +79,30 @@ export class ChromeBuiltIn {
     try {
       let result;
       if (typeof client.summarize === 'function') {
-        result = await client.summarize(text, { type, length, format, outputLanguage: 'en' });
+        result = await client.summarize(text, { type, length, format, outputLanguage });
       }
        else if (typeof client.create === 'function') {
-        const instance = await client.create({ type, length, format, outputLanguage: 'en' });
+        const instance = await client.create({ type, length, format, outputLanguage });
         if (instance.ready) await instance.ready;
         result = await instance.summarize(text);
         if (typeof instance.destroy === 'function') await instance.destroy();
       }
-      return result?.text || result || 'Summarization failed';
+      
+      const summaryText = result?.text || result || 'Summarization failed';
+      
+      // If target language is not supported by Summarizer, translate the result
+      if (needsTranslation) {
+        console.log(`🔄 Translating summary from ${outputLanguage} to ${targetLang}...`);
+        try {
+          const translated = await this.translate(summaryText, outputLanguage, targetLang);
+          return translated;
+        } catch (translateError) {
+          console.warn('Translation of summary failed, returning English summary:', translateError);
+          return summaryText; // Fallback to English summary if translation fails
+        }
+      }
+      
+      return summaryText;
     } catch (error) {
       ErrorHandler.logError(error, 'ChromeBuiltIn.summarize');
       throw new Error(`Summarization failed: ${error}`);
@@ -180,6 +205,15 @@ export class ChromeBuiltIn {
   }
 
   async rewrite(text: string, style: string, tone: string, complexity: string): Promise<string> {
+    const userPreferences = await preferencesService.getPreferences();
+    const autoTranslate = userPreferences.userSettings.translation?.autoTranslateResponse ?? false;
+    const targetLang = userPreferences.userSettings.translation?.targetLanguage || 'en';
+    
+    // Chrome Writer API only supports: en, es, ja
+    const SUPPORTED_WRITER_LANGS = ['en', 'es', 'ja'];
+    const needsTranslation = autoTranslate && !SUPPORTED_WRITER_LANGS.includes(targetLang);
+    const outputLanguage = needsTranslation ? 'en' : (autoTranslate ? targetLang : 'en');
+    
     const prompt = `Please rewrite the following text with a ${tone} tone, ${style} style, and ${complexity} complexity:\n\n${text}`;
     
     const client = await this.getClient('writer');
@@ -188,10 +222,23 @@ export class ChromeBuiltIn {
     }
 
     try {
-      const writer = await client.create();
+      const writer = await client.create({ sharedContext: `Write in ${outputLanguage} language` });
       if (writer.ready) await writer.ready;
       const result = await writer.write(prompt);
       if (writer.destroy) await writer.destroy();
+      
+      // If target language is not supported by Writer, translate the result
+      if (needsTranslation) {
+        console.log(`🔄 Translating rewrite from ${outputLanguage} to ${targetLang}...`);
+        try {
+          const translated = await this.translate(result, outputLanguage, targetLang);
+          return translated;
+        } catch (translateError) {
+          console.warn('Translation of rewrite failed, returning English result:', translateError);
+          return result;
+        }
+      }
+      
       return result;
     } catch (error) {
       ErrorHandler.logError(error, 'ChromeBuiltIn.rewrite');
@@ -200,6 +247,15 @@ export class ChromeBuiltIn {
   }
 
   async validate(text: string, strictness: string): Promise<string> {
+    const userPreferences = await preferencesService.getPreferences();
+    const autoTranslate = userPreferences.userSettings.translation?.autoTranslateResponse ?? false;
+    const targetLang = userPreferences.userSettings.translation?.targetLanguage || 'en';
+    
+    // Chrome Writer API only supports: en, es, ja
+    const SUPPORTED_WRITER_LANGS = ['en', 'es', 'ja'];
+    const needsTranslation = autoTranslate && !SUPPORTED_WRITER_LANGS.includes(targetLang);
+    const outputLanguage = needsTranslation ? 'en' : (autoTranslate ? targetLang : 'en');
+    
     const temperature = strictness === 'strict' ? 0.1 : 
                        strictness === 'lenient' ? 0.5 : 0.3;
 
@@ -209,19 +265,34 @@ export class ChromeBuiltIn {
       ? 'Perform a balanced credibility analysis of this text.'
       : 'Evaluate the credibility, truthfulness, and potential bias of this text.';
 
-    const prompt = `${strictnessPrompt}
-Analyze the text in the following structured format...
+    // Add current date context to help the model understand temporal context
+    const today = new Date();
+    const currentDate = today.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    const prompt = `IMPORTANT CONTEXT: Today's date is ${currentDate}. When analyzing this text, consider that:
+- Events from 2024-2025 are CURRENT or RECENT, not future speculation
+- References to dates close to ${currentDate} are REAL-TIME events
+- Do NOT flag recent events as "speculation" or "unverifiable future claims"
+- Focus on factual accuracy, source credibility, and logical consistency
+
+${strictnessPrompt}
 
 Text to analyze:
 "${text}"
 
 Return your response in this exact format:
-1. *Source Verification*: ...
-2. *Fact-Checking*: ...
-3. *AI Detection*: ...
-4. *Link & Domain Safety*: ...
-5. *Misinformation Risk*: ...
-6. *Bias Detection*: ...`;
+1. *Source Verification*: Assess the credibility of sources (if mentioned) or lack thereof
+2. *Fact-Checking*: Verify factual claims considering the current date is ${currentDate}
+3. *AI Detection*: Evaluate if text shows signs of AI generation (repetitive patterns, generic phrasing)
+4. *Link & Domain Safety*: Check for suspicious URLs or domains (if present)
+5. *Misinformation Risk*: Assess likelihood of misleading or false information
+6. *Bias Detection*: Identify potential bias (political, commercial, cultural, etc.)
+
+Be objective and consider temporal context. Recent dates are NOT speculation.`;
 
     const client = await this.getClient('writer');
     if (!client) {
@@ -229,10 +300,23 @@ Return your response in this exact format:
     }
 
     try {
-      const writer = await client.create({ temperature });
+      const writer = await client.create({ temperature, sharedContext: `Write in ${outputLanguage} language` });
       if (writer.ready) await writer.ready;
       const result = await writer.write(prompt);
       if (writer.destroy) await writer.destroy();
+      
+      // If target language is not supported by Writer, translate the result
+      if (needsTranslation) {
+        console.log(`🔄 Translating validation from ${outputLanguage} to ${targetLang}...`);
+        try {
+          const translated = await this.translate(result, outputLanguage, targetLang);
+          return translated;
+        } catch (translateError) {
+          console.warn('Translation of validation failed, returning English result:', translateError);
+          return result;
+        }
+      }
+      
       return result;
     } catch (error) {
       ErrorHandler.logError(error, 'ChromeBuiltIn.validate');
@@ -241,6 +325,15 @@ Return your response in this exact format:
   }
 
   async customPrompt(prompt: string, text: string): Promise<string> {
+    const userPreferences = await preferencesService.getPreferences();
+    const autoTranslate = userPreferences.userSettings.translation?.autoTranslateResponse ?? false;
+    const targetLang = userPreferences.userSettings.translation?.targetLanguage || 'en';
+    
+    // Chrome Writer API only supports: en, es, ja
+    const SUPPORTED_WRITER_LANGS = ['en', 'es', 'ja'];
+    const needsTranslation = autoTranslate && !SUPPORTED_WRITER_LANGS.includes(targetLang);
+    const outputLanguage = needsTranslation ? 'en' : (autoTranslate ? targetLang : 'en');
+    
     const fullPrompt = `The user has provided the following prompt: "${prompt}". Please respond accordingly to the following text:\n\n${text}`;
     
     const client = await this.getClient('writer');
@@ -249,10 +342,23 @@ Return your response in this exact format:
     }
 
     try {
-      const writer = await client.create();
+      const writer = await client.create({ sharedContext: `Write in ${outputLanguage} language` });
       if (writer.ready) await writer.ready;
-      const result = await writer.write(fullPrompt); // ← JAVÍTVA: fullPrompt
+      const result = await writer.write(fullPrompt);
       if (writer.destroy) await writer.destroy();
+      
+      // If target language is not supported by Writer, translate the result
+      if (needsTranslation) {
+        console.log(`🔄 Translating custom prompt response from ${outputLanguage} to ${targetLang}...`);
+        try {
+          const translated = await this.translate(result, outputLanguage, targetLang);
+          return translated;
+        } catch (translateError) {
+          console.warn('Translation of custom prompt failed, returning English result:', translateError);
+          return result;
+        }
+      }
+      
       return result;
     } catch (error) {
       ErrorHandler.logError(error, 'ChromeBuiltIn.customPrompt');
@@ -261,6 +367,15 @@ Return your response in this exact format:
   }
 
   async cleanAndConvertToMarkdown(html: string): Promise<string> {
+    const userPreferences = await preferencesService.getPreferences();
+    const autoTranslate = userPreferences.userSettings.translation?.autoTranslateResponse ?? false;
+    const targetLang = userPreferences.userSettings.translation?.targetLanguage || 'en';
+    
+    // Chrome Writer API only supports: en, es, ja
+    const SUPPORTED_WRITER_LANGS = ['en', 'es', 'ja'];
+    const needsTranslation = autoTranslate && !SUPPORTED_WRITER_LANGS.includes(targetLang);
+    const outputLanguage = needsTranslation ? 'en' : (autoTranslate ? targetLang : 'en');
+    
     const prompt = `Convert the following HTML into clean, well-structured Markdown: ${html}`;
 
     const client = await this.getClient('writer');
@@ -269,10 +384,23 @@ Return your response in this exact format:
     }
 
     try {
-      const writer = await client.create({ temperature: 0.1 });
+      const writer = await client.create({ temperature: 0.1, sharedContext: `Write in ${outputLanguage} language` });
       if (writer.ready) await writer.ready;
       const result = await writer.write(prompt);
       if (writer.destroy) await writer.destroy();
+      
+      // If target language is not supported by Writer, translate the result
+      if (needsTranslation) {
+        console.log(`🔄 Translating markdown from ${outputLanguage} to ${targetLang}...`);
+        try {
+          const translated = await this.translate(result, outputLanguage, targetLang);
+          return translated;
+        } catch (translateError) {
+          console.warn('Translation of markdown failed, returning English result:', translateError);
+          return result;
+        }
+      }
+      
       return result;
     } catch (error) {
       ErrorHandler.logError(error, 'ChromeBuiltIn.cleanAndConvertToMarkdown');

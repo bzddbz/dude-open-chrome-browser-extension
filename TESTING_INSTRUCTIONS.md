@@ -1,29 +1,50 @@
 # 🧪 Testing Instructions - Dude AI Browser Assistant
 
+**Version**: 0.0.2  
+**Last Updated**: November 2, 2025
+
 ## 📋 Overview
 
-This document provides comprehensive testing instructions for judges and evaluators of the Dude AI Browser Assistant Chrome extension. The extension leverages Chrome's built-in AI APIs and includes fallback mechanisms for testing environments.
+This document provides comprehensive testing instructions for judges and evaluators of the Dude AI Browser Assistant Chrome extension. The extension leverages **three AI provider options**: Chrome Built-in AI (Gemini Nano), Google Gemini API, or OpenAI-compatible APIs (Ollama, LM Studio, etc.) with advanced features like auto-translation, voice output, and temporal context awareness.
 
 ## 🔧 Prerequisites
 
 ### System Requirements
 - **Chrome Browser**: Version 127+ (Chrome Canary recommended for Built-in AI functionality)
 - **Operating System**: Windows 10+, macOS 10.15+, or Linux
-- **Memory**: Minimum 4GB RAM (8GB recommended)
+- **Memory**: Minimum 4GB RAM (8GB recommended for Built-in AI)
+- **Node.js**: v18+ (for building from source)
 
+### Chrome AI API Setup (Built-in AI - Recommended)
 
-### Chrome AI API Setup (Built-ins)
-
-For full AI functionality, enable these flags in `chrome://flags/` in Chrome Canary or Dev:
+For full AI functionality with Chrome Built-in AI, enable these flags in `chrome://flags/` (Chrome Canary or Dev):
 
 1. `#prompt-api-for-gemini-nano` - Enable Gemini Nano prompt API
 2. `#summarization-api-for-gemini-nano` - Enable summarization API
 3. `#translation-api` - Enable translation API
 4. `#ai-features` - Enable general AI features
 
-After enabling flags, restart Chrome and wait for model downloads (may take 5-10 minutes on first use).
+**Important Notes**:
+- After enabling flags, restart Chrome
+- First use requires model download (5-10 minutes, ~1.5GB)
+- Check download status: Open DevTools → Console → Type `await ai.summarizer.create()` 
+- Built-in AI output limited to English, Spanish, Japanese (auto-translate workaround implemented)
 
-**Alternative**: If Chrome Built-in AI is unavailable, you can use the Gemini API fallback by adding your API key in Settings.
+### Alternative: Cloud AI Setup
+
+**Option 1: Google Gemini API** (No Chrome flags needed)
+1. Get free API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+2. After installing extension, open Settings (⚙️)
+3. Paste API key in "Gemini API Key" field
+4. Enable "Cloud First" mode
+
+**Option 2: OpenAI-Compatible (Local LLM)** (Fully offline)
+1. Install Ollama: `curl https://ollama.ai/install.sh | sh`
+2. Pull a model: `ollama pull llama2`
+3. In extension Settings, configure:
+   - Base URL: `http://localhost:11434`
+   - Model: `llama2`
+4. Enable "OpenAI-Compatible Provider"
 
 
 
@@ -157,34 +178,43 @@ After enabling flags, restart Chrome and wait for model downloads (may take 5-10
 
 ### Test Case 4: Auto-Translation Feature
 
-**Objective**: Test automatic translation of all AI results
+**Objective**: Test automatic translation of all AI results with language workaround
 
 **Steps**:
 
 1. Open Settings (⚙️ icon)
 2. Enable "Auto-translate results" checkbox
-3. Select target language (e.g., Italian, Spanish, French)
+3. Select target language (e.g., Hungarian, Italian, French, German - **not** English/Spanish/Japanese)
 4. Close Settings
 5. Select English text on any webpage
 6. Process with various AI features:
-   - Summarize
-   - Validate
-   - Rewrite
-7. Verify all results appear in the selected target language
-8. Test with explicit translation:
+   - Summarize → Should return Hungarian (or selected language) summary
+   - Validate → Should return Hungarian credibility analysis
+   - Rewrite → Should return Hungarian improved text
+7. Test with explicit translation:
    - Select text
    - Click Translate button
    - Verify it uses the target language setting
 
+**Technical Note** (v0.0.2):
+- Chrome Built-in AI only supports en/es/ja output
+- Workaround: Generate in English → Auto-translate to target language
+- No duplicate API calls (efficient prompt-level instruction)
+- If using Gemini/OpenAI-compatible, translation happens directly
+
 **Expected Results**:
 
 - When auto-translate is enabled, all AI operations return results in target language
-- AI prompts include language instruction ("Respond in {language} language")
-- No duplicate API calls (language instruction in original prompt, not post-processing)
+- For Built-in AI + non-supported languages (hu, de, fr, it, etc.):
+  1. AI generates response in English
+  2. Chrome Translation API translates to target language
+  3. Final result appears in target language
+- For Gemini/OpenAI-compatible: Direct generation in target language
 - Translation operation respects target language setting
 - Voice playback uses correct language/accent for translated content
+- Console logs show `🔄 Translating ... from en to hu...` (if using Built-in AI)
 
-**Pass Criteria**: ✅ Auto-translation works efficiently without duplicate processing
+**Pass Criteria**: ✅ Auto-translation works efficiently for all 15+ languages without errors
 
 ---
 
@@ -223,34 +253,120 @@ After enabling flags, restart Chrome and wait for model downloads (may take 5-10
 
 ### Test Case 6: Settings and Configuration
 
-**Objective**: Test settings panel and customization options
+**Objective**: Test settings panel and all three AI provider configurations
 
 **Steps**:
 
 1. Open Dude extension
 2. Click the "⚙️ Settings" button in top-right corner
-3. Test various settings:
-   - **Target Language**: Change to different languages (Italian, Spanish, French, etc.)
+3. Test **Chrome Built-in AI Settings**:
+   - Verify "Use Built-in AI" option (default)
+   - Check AI availability indicators (green = ready, yellow = downloading, red = unavailable)
+4. Test **Google Gemini Settings**:
+   - Click "Use Gemini API" option
+   - Add API key in "Gemini API Key" field
+   - Enable "Cloud First" to prioritize Gemini over Built-in AI
+   - Save and verify key is obfuscated in `chrome.storage.local` (check DevTools)
+5. Test **OpenAI-Compatible Settings**:
+   - Click "Use OpenAI-Compatible" option
+   - Enter base URL (e.g., `http://localhost:11434` for Ollama)
+   - Enter model name (e.g., `llama2`, `mistral`, `codellama`)
+   - Optional: Add API key for remote servers
+   - Click "Test Connection" button
+6. Test **General Settings**:
+   - **Target Language**: Change to different languages (Italian, Hungarian, French, etc.)
    - **Auto-translate Results**: Toggle checkbox on/off
    - **Summary Length**: Select Short/Medium/Long
-   - **Rewrite Style**: Select Formal/Informal
-   - **Gemini API Key**: Add API key for cloud AI (optional)
-4. Close settings and verify changes persist
-5. Reload extension and verify settings remain saved
+   - **Summary Type**: Key points, Paragraph, Bullets
+   - **Summary Format**: Markdown, Plain Text, JSON
+   - **Rewrite Style**: Neutral, Creative, Academic
+   - **Rewrite Tone**: Professional, Casual, Formal
+   - **Rewrite Complexity**: Simple, Intermediate, Advanced
+   - **Validation Strictness**: Strict, Medium, Lenient
+7. Close settings and verify changes persist
+8. Reload extension and verify settings remain saved
+9. Process text with each AI provider and verify correct provider badge appears
 
 **Expected Results**:
 
-- Settings save immediately to chrome.storage.local
+- All settings save immediately to `chrome.storage.local`
 - Interface reflects changes instantly
-- API key is obfuscated in storage (XOR + Base64)
-- Settings persist across browser sessions
+- API keys are obfuscated with XOR + Base64 in storage
+- Settings persist across browser sessions and reloads
 - Target language affects translation and auto-translate feature
+- AI provider selection works correctly (Built-in → Gemini → OpenAI-compatible priority)
+- Connection test for OpenAI-compatible returns success/failure message
+- Provider badge on result cards shows correct AI source
 
-**Pass Criteria**: ✅ All settings functional and persistent with secure API key storage
+**Pass Criteria**: ✅ All settings functional and persistent with secure API key storage and multi-provider support
 
 ---
 
-### Test Case 7: Error Handling and Edge Cases
+### Test Case 7: Temporal Context and Knowledge Cutoff Fix (v0.0.2)
+
+**Objective**: Verify validate function correctly handles current-date content without false speculation flags
+
+**Background**: 
+- AI models have knowledge cutoffs (e.g., trained on data up to early 2024)
+- Without temporal context, they may flag 2025 events as "speculation" or "unverifiable future claims"
+- v0.0.2 fix injects current date into validate prompts for all three AI providers
+
+**Steps**:
+
+1. **Find recent/current-date content**:
+   - Search for news articles from October-November 2025
+   - Example: "Tesla earnings report November 2025" or "US election results 2024"
+   - Or create test text: "On November 2, 2025, the Chrome extension passed all tests successfully."
+
+2. **Test with Built-in AI**:
+   - Select recent-date text (50-200 characters)
+   - Click "✅ Validate" button
+   - Wait for credibility analysis
+
+3. **Test with Gemini API** (if configured):
+   - Same text selection
+   - Ensure Gemini API is active (check Settings → Cloud First enabled)
+   - Click "✅ Validate"
+
+4. **Test with OpenAI-Compatible** (if configured):
+   - Same text selection
+   - Ensure OpenAI-compatible provider active
+   - Click "✅ Validate"
+
+5. **Review validation results**:
+   - Check "Fact-Checking" section
+   - Verify NO false flags like:
+     - ❌ "Refers to future events that cannot be verified"
+     - ❌ "Speculative content about unverifiable dates"
+     - ❌ "Claims about future events (November 2025)"
+   - Expect reasonable analysis like:
+     - ✅ "Recent event, source verification needed"
+     - ✅ "Current-date information, verify with reliable sources"
+     - ✅ "Real-time event as of [current date]"
+
+**Technical Verification**:
+1. Open Chrome DevTools → Console
+2. Look for injected context in prompts (visible in verbose logging):
+   ```
+   IMPORTANT CONTEXT: Today's date is November 2, 2025. When analyzing this text, consider that:
+   - Events from 2024-2025 are CURRENT or RECENT, not future speculation
+   ```
+3. Verify date format: "November 2, 2025" (not "2025-11-02")
+
+**Expected Results**:
+
+- **Built-in AI**: Validate prompt includes current date context before sending to Gemini Nano
+- **Gemini API**: Same temporal context injection in API request
+- **OpenAI-Compatible**: Same temporal context injection in chat completion
+- NO false "speculation" or "future event" flags for current-date content
+- Proper temporal awareness in fact-checking analysis
+- Date dynamically generated each time (not hardcoded)
+
+**Pass Criteria**: ✅ All three AI providers handle 2024-2025 dates correctly without false speculation warnings
+
+---
+
+### Test Case 8: Error Handling and Edge Cases
 **Objective**: Test robustness and error recovery
 
 **Steps**:
@@ -279,7 +395,7 @@ After enabling flags, restart Chrome and wait for model downloads (may take 5-10
 
 ---
 
-### Test Case 8: Performance and Resource Usage
+### Test Case 9: Performance and Resource Usage
 **Objective**: Verify efficient resource utilization
 
 **Steps**:
@@ -353,21 +469,44 @@ After enabling flags, restart Chrome and wait for model downloads (may take 5-10
 
 ---
 
-## 🚨 Known Issues and Workarounds
+### Known Issues and Workarounds
 
-### Issue 1: Chrome AI APIs Not Available
+### Issue 1: Chrome Built-in AI Output Language Limitation
+**Symptom**: Built-in AI only supports English, Spanish, Japanese output
+**Solution** (v0.0.2): 
+- Automatic workaround implemented
+- Extension generates in supported language (English)
+- Then translates to target language via Chrome Translation API
+- No user action needed, works transparently
+
+### Issue 2: Chrome AI APIs Not Available
 **Symptom**: AI features show "API not available" messages
 **Solution**: 
 - Enable Chrome AI flags (see Prerequisites)
 - Or use Gemini API key in Settings for cloud fallback
+- Or configure OpenAI-compatible provider for local LLM
 
+### Issue 3: Model Download in Progress
+**Symptom**: "Downloading model, please wait" message
+**Solution**:
+- First use requires ~1.5GB model download (5-10 minutes)
+- Check progress: DevTools → Console → `await ai.summarizer.capabilities()`
+- Use Gemini API as temporary fallback during download
 
-### Issue 2: Slow Performance
+### Issue 4: Slow Performance
 **Symptom**: Processing takes longer than expected
 **Solution**: 
-- Ensure sufficient memory available
+- Ensure sufficient memory available (8GB+ recommended)
 - Close unnecessary browser tabs
-- Restart browser if needed
+- For large text, use chunking (automatic for >5000 chars)
+- Consider using cloud providers (Gemini) for faster response
+
+### Issue 5: False "Speculation" Flags (FIXED in v0.0.2)
+**Symptom**: Validate flagged 2025 events as "future speculation"
+**Solution**: 
+- Fixed in v0.0.2 with temporal context injection
+- Update to latest version if seeing this issue
+- All three AI providers now include current date in prompts
 
 ---
 

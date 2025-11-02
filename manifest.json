@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dude - AI Browser Assistant",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "AI-powered browser assistant for summarizing, translating, and validating web content",
   "permissions": [
     "activeTab",
